@@ -21,10 +21,9 @@ namespace Utils.NET.Net.Tcp
 
         private PacketFactory<TPacket> packetFactory;
 
-        public NetConnection(Socket socket, PacketFactory<TPacket> packetFactory)
+        public NetConnection(Socket socket)
         {
             this.socket = socket;
-            this.packetFactory = packetFactory;
             SetupSocket();
             buffer = new IO.Buffer(4);
         }
@@ -32,6 +31,11 @@ namespace Utils.NET.Net.Tcp
         private void SetupSocket()
         {
             socket.NoDelay = true;
+        }
+
+        public void SetPacketFactory(PacketFactory<TPacket> packetFactory)
+        {
+            this.packetFactory = packetFactory;
         }
 
         public void BeginRead()
@@ -47,6 +51,7 @@ namespace Utils.NET.Net.Tcp
 
         private void ReceivedPayload(byte[] data)
         {
+            if (packetFactory == null) return;
             BitReader w = new BitReader(data, data.Length);
             TPacket packet = packetFactory.CreatePacket(w.ReadUInt8());
             if (packet == null) return;

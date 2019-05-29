@@ -6,15 +6,17 @@ using System.Text;
 
 namespace Utils.NET.Net.Tcp
 {
-    public class NetListener<TPacket> where TPacket : Packet
+    public class NetListener<TCon, TPacket> 
+        where TPacket : Packet 
+        where TCon : NetConnection<TPacket>
     {
         public EndPoint localEndPoint;
 
         private Socket socket;
 
-        private NetConnectionFactory<TPacket> connectionFactory;
+        private NetConnectionFactory<TCon, TPacket> connectionFactory;
 
-        public NetListener(ushort port, NetConnectionFactory<TPacket> connectionFactory)
+        public NetListener(ushort port, NetConnectionFactory<TCon, TPacket> connectionFactory)
         {
             this.connectionFactory = connectionFactory;
 
@@ -30,10 +32,15 @@ namespace Utils.NET.Net.Tcp
             socket.BeginAccept(OnAcceptCallback, null);
         }
 
+        public void Stop()
+        {
+            socket.Close();
+        }
+
         private void OnAcceptCallback(IAsyncResult ar)
         {
             Socket remoteSocket = socket.EndAccept(ar);
-            NetConnection<TPacket> connection = connectionFactory.CreateConnection(remoteSocket);
+            TCon connection = connectionFactory.CreateConnection(remoteSocket);
             if (connection == null)
             {
                 remoteSocket.Close();
