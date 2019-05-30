@@ -268,7 +268,7 @@ namespace Utils.NET.Net.Tcp
                         return;
                     }
                 }
-                catch (ObjectDisposedException disposed) // socket was already disposed
+                catch (ObjectDisposedException) // socket was already disposed
                 {
                     return;
                 }
@@ -292,7 +292,7 @@ namespace Utils.NET.Net.Tcp
                         return;
                     }
                 }
-                catch (ObjectDisposedException disposed) // socket was already disposed
+                catch (ObjectDisposedException) // socket was already disposed
                 {
                     return;
                 }
@@ -324,7 +324,7 @@ namespace Utils.NET.Net.Tcp
                     return false;
                 }
             }
-            catch (ObjectDisposedException disposed) // socket was already disposed
+            catch (ObjectDisposedException) // socket was already disposed
             {
                 return false;
             }
@@ -352,7 +352,7 @@ namespace Utils.NET.Net.Tcp
                     return;
                 }
             }
-            catch (ObjectDisposedException disposed) // socket was already disposed
+            catch (ObjectDisposedException) // socket was already disposed
             {
                 return;
             }
@@ -387,7 +387,7 @@ namespace Utils.NET.Net.Tcp
                     return;
                 }
             }
-            catch (ObjectDisposedException disposed) // socket was already disposed
+            catch (ObjectDisposedException) // socket was already disposed
             {
                 return;
             }
