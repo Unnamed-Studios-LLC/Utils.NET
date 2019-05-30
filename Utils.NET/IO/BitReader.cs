@@ -116,5 +116,22 @@ namespace Utils.NET.IO
                 return *((double*)&intVal);
             }
         }
+
+        public DateTime ReadDateTime() => DateTime.SpecifyKind(new DateTime(ReadInt64()), DateTimeKind.Utc).ToLocalTime();
+
+        public string ReadUTF()
+        {
+            var length = ReadUInt16();
+            byte[] bytes = ReadBytes(length);
+            return Encoding.UTF8.GetString(bytes, 0, length);
+        }
+
+        public byte[] ReadBytes(int length)
+        {
+            byte[] bytes = new byte[length];
+            for (int i = 0; i < length; i++)
+                bytes[i] = ReadUInt8();
+            return bytes;
+        }
     }
 }

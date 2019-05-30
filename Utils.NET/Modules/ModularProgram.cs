@@ -46,7 +46,7 @@ namespace Utils.NET.Modules
                 Modules.Add(module);
                 module.Start();
 
-                Log.Push("Starting Module: " + module.Name);
+                Log.Write("Starting Module: " + module.Name);
             }
         }
 

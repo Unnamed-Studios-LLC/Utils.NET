@@ -5,9 +5,10 @@ using System.Text;
 
 namespace Utils.NET.Net.Tcp
 {
-    public abstract class NetConnectionFactory<TPacket> where TPacket : Packet
+    public abstract class NetConnectionFactory<Tcon, TPacket> 
+        where TPacket : Packet
+        where Tcon : NetConnection<TPacket>
     {
-        public abstract NetConnection<TPacket> CreateConnection(Socket socket);
-        public abstract void HandleConnection(NetConnection<TPacket> connection);
+        public abstract void HandleConnection(Tcon connection);
     }
 }

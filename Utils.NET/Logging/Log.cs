@@ -14,12 +14,69 @@ namespace Utils.NET.Logging
         private static Log Instance = new Log();
 
         /// <summary>
+        /// Logs the string representation of the given object
+        /// </summary>
+        /// <param name="line"></param>
+        public static void Error(object obj)
+        {
+            Error(obj.ToString());
+        }
+
+        /// <summary>
         /// Logs a line
         /// </summary>
         /// <param name="line"></param>
-        public static void Push(string line)
+        public static void Error(string line)
         {
-            Instance.LogLine(line);
+            Write(line, ConsoleColor.Red);
+        }
+
+        /// <summary>
+        /// Logs the string representation of the given object
+        /// </summary>
+        /// <param name="line"></param>
+        public static void Write(object obj)
+        {
+            Write(obj.ToString());
+        }
+
+        /// <summary>
+        /// Logs the string representation of the given object
+        /// </summary>
+        /// <param name="line"></param>
+        public static void Write(object obj, ConsoleColor color)
+        {
+            Write(obj.ToString(), color);
+        }
+
+        /// <summary>
+        /// Logs a line
+        /// </summary>
+        /// <param name="line"></param>
+        public static void Write(string line)
+        {
+            Write(line, ConsoleColor.White);
+        }
+
+        /// <summary>
+        /// Logs a line
+        /// </summary>
+        /// <param name="line"></param>
+        public static void Write(string line, ConsoleColor color)
+        {
+            Write(LogEntry.Init(line, color));
+        }
+
+        /// <summary>
+        /// Logs an entry
+        /// </summary>
+        /// <param name="line"></param>
+        public static void Write(LogEntry entry)
+        {
+            if (Instance.running)
+                Instance.LogLine(entry);
+            else
+                Instance.WriteEntry(entry);
         }
 
         /// <summary>
@@ -41,7 +98,7 @@ namespace Utils.NET.Logging
         /// <summary>
         /// Lines ready to be logged
         /// </summary>
-        private ConcurrentQueue<string> logLines = new ConcurrentQueue<string>();
+        private ConcurrentQueue<LogEntry> logLines = new ConcurrentQueue<LogEntry>();
 
         /// <summary>
         /// Event used to delay input checking
@@ -51,18 +108,24 @@ namespace Utils.NET.Logging
         /// <summary>
         /// Bool determining if the Log is running of not
         /// </summary>
-        private bool running = true;
+        private bool running = false;
 
         /// <summary>
         /// The current input line
         /// </summary>
         private string inputLine = "";
 
+        public Log()
+        {
+            Console.OutputEncoding = Encoding.UTF8;
+        }
+
         /// <summary>
         /// Runs the input loop
         /// </summary>
         private void RunLog()
         {
+            running = true;
             while (running)
             {
                 delayEvent.WaitOne(50);
@@ -141,20 +204,46 @@ namespace Utils.NET.Logging
         /// </summary>
         private void WriteLogLines()
         {
-            string line;
+            LogEntry entry;
             bool first = true;
-            while (logLines.TryDequeue(out line))
+            while (logLines.TryDequeue(out entry))
             {
                 if (first)
                 {
                     ClearCurrentLine();
                     first = false;
                 }
-                Console.WriteLine(line);
+                WriteEntry(entry);
             }
 
             if (inputLine.Length > 0 && !first)
                 Console.Write(inputLine);
+        }
+        
+        /// <summary>
+        /// Writes an entry into the log prefixed with a timestamp
+        /// </summary>
+        /// <param name="line"></param>
+        private void WriteEntry(LogEntry entry)
+        {
+            WriteTimestamp();
+            foreach (var write in entry.writes)
+                Write(write);
+            Console.Write('\n');
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        private void Write(LogWrite write)
+        {
+            Console.ForegroundColor = write.color;
+            Console.Write(write.text);
+        }
+
+        private void WriteTimestamp()
+        {
+            Console.Write('[');
+            Console.Write(DateTime.Now);
+            Console.Write("] ");
         }
 
         /// <summary>
@@ -166,12 +255,21 @@ namespace Utils.NET.Logging
         }
 
         /// <summary>
-        /// Logs a line within the console
+        /// Logs an entry within the console
         /// </summary>
         /// <param name="line"></param>
         public void LogLine(string line)
         {
-            logLines.Enqueue(line);
+            LogLine(LogEntry.Init(line));
+        }
+
+        /// <summary>
+        /// Logs an entry within the console
+        /// </summary>
+        /// <param name="line"></param>
+        public void LogLine(LogEntry entry)
+        {
+            logLines.Enqueue(entry);
         }
 
         public void Dispose()

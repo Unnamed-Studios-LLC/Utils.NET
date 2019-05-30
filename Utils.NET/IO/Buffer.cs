@@ -41,8 +41,6 @@ namespace Utils.NET.IO
 
         public void Reset(int size)
         {
-            //byte[] newData = new byte[size];
-            //Array.Copy(data, 0, newData, 0, Math.Min(this.size, size));
             data = new byte[size];
             maxSize = size;
             this.size = 0;

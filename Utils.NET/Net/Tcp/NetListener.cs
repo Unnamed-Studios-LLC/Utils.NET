@@ -3,21 +3,20 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Utils.NET.Logging;
 
 namespace Utils.NET.Net.Tcp
 {
-    public class NetListener<TPacket> where TPacket : Packet
+    public abstract class NetListener<TCon, TPacket> 
+        where TPacket : Packet
+        where TCon : NetConnection<TPacket>
     {
-        public EndPoint localEndPoint;
+        public IPEndPoint localEndPoint;
 
         private Socket socket;
 
-        private NetConnectionFactory<TPacket> connectionFactory;
-
-        public NetListener(ushort port, NetConnectionFactory<TPacket> connectionFactory)
+        public NetListener(int port)
         {
-            this.connectionFactory = connectionFactory;
-
             localEndPoint = new IPEndPoint(IPAddress.Any, port);
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             socket.Bind(localEndPoint);
@@ -27,19 +26,27 @@ namespace Utils.NET.Net.Tcp
 
         public void Start()
         {
+            Log.Write(LogEntry.Init(this).Append(" is listening on port: " + localEndPoint.Port));
             socket.BeginAccept(OnAcceptCallback, null);
+        }
+
+        public void Stop()
+        {
+            socket.Close();
         }
 
         private void OnAcceptCallback(IAsyncResult ar)
         {
             Socket remoteSocket = socket.EndAccept(ar);
-            NetConnection<TPacket> connection = connectionFactory.CreateConnection(remoteSocket);
+            TCon connection = (TCon)Activator.CreateInstance(typeof(TCon), remoteSocket);
             if (connection == null)
             {
                 remoteSocket.Close();
                 return;
             }
-            connectionFactory.HandleConnection(connection);
+            HandleConnection(connection);
         }
+
+        public abstract void HandleConnection(TCon connection);
     }
 }

@@ -162,5 +162,20 @@ namespace Utils.NET.IO
             }
             Write(intVal);
         }
+
+        public void Write(DateTime value) => Write(value.ToUniversalTime().Ticks);
+
+        public void Write(string str)
+        {
+            var bytes = Encoding.UTF8.GetBytes(str);
+            Write((ushort)bytes.Length);
+            Write(bytes);
+        }
+
+        public void Write(byte[] bytes)
+        {
+            for (int i = 0; i < bytes.Length; i++)
+                Write(bytes[i]);
+        }
     }
 }
