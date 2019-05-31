@@ -166,8 +166,10 @@ namespace Utils.NET.Logging
                     input = "";
                     break;
                 default:
-                    input += key.KeyChar;
-                    WriteInputKey(key.KeyChar);
+                    var c = key.KeyChar;
+                    if (!char.IsLetterOrDigit(c)) return;
+                    input += c;
+                    WriteInputKey(c);
                     break;
             }
             inputLine = input;
@@ -189,6 +191,7 @@ namespace Utils.NET.Logging
         private void ProcessInput(string input)
         {
             input = input.Trim();
+            if (string.IsNullOrWhiteSpace(input)) return; // empty command
             LogLine(input);
             switch (input)
             {
@@ -251,7 +254,7 @@ namespace Utils.NET.Logging
         /// </summary>
         private void ClearCurrentLine()
         {
-            Console.Write("\r" + new string(' ', Console.WindowWidth) + "\r");
+            Console.Write("\r" + new string(' ', Console.WindowWidth - 2) + "\r");
         }
 
         /// <summary>

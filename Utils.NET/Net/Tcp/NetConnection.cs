@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -15,6 +16,8 @@ namespace Utils.NET.Net.Tcp
         public delegate void OnConnectCallback(bool success, NetConnection<TPacket> connection);
 
         public delegate void OnDisconnectCallback(NetConnection<TPacket> connection);
+
+        public delegate void OnTokenPacketCallback(TPacket packet, NetConnection<TPacket> connection);
 
         private enum ReceiveState
         {
@@ -51,6 +54,16 @@ namespace Utils.NET.Net.Tcp
         /// Delegate to be called upon disconnect
         /// </summary>
         private OnDisconnectCallback disconnectCallback;
+
+        /// <summary>
+        /// The next token id to assign
+        /// </summary>
+        private int nextToken = 0;
+
+        /// <summary>
+        /// Dictionary containing callbacks for token packets
+        /// </summary>
+        private ConcurrentDictionary<int, OnTokenPacketCallback> tokenCallbacks = new ConcurrentDictionary<int, OnTokenPacketCallback>();
 
         public NetConnection(Socket socket)
         {
@@ -182,15 +195,68 @@ namespace Utils.NET.Net.Tcp
             return payload;
         }
 
+        private IO.Buffer PackageTokenPacket(TPacket packet)
+        {
+            BitWriter w = new BitWriter();
+            w.Write((int)0); // reserve size int space
+            packet.WriteTokenPacket(w);
+
+            var payload = w.GetData();
+            System.Buffer.BlockCopy(BitConverter.GetBytes(payload.size - 4), 0, payload.data, 0, 4); // insert size int to the start
+
+            return payload;
+        }
+
+        /// <summary>
+        /// Creates a token and stores the callback
+        /// </summary>
+        /// <param name="callback"></param>
+        /// <returns></returns>
+        private bool TryAssignToken(TPacket packet, OnTokenPacketCallback callback)
+        {
+            if (!(packet is ITokenPacket tokenPacket))
+            {
+                Log.Error($"{packet.GetType().Name} is not an ITokenPacket!");
+                return false;
+            }
+
+            int token = Interlocked.Increment(ref nextToken);
+            tokenCallbacks[token] = callback;
+            tokenPacket.Token = token;
+            return true;
+        }
+
         #region Sync
 
         public void Send(TPacket packet)
         {
             var payload = PackagePacket(packet);
-            socket.Send(payload.data, 0, payload.size, SocketFlags.None, out SocketError error);
+            SendBuffer(payload, packet);
+        }
+
+        public void SendToken(TPacket packet)
+        {
+            if (packet is ITokenPacket token)
+                token.TokenResponse = true;
+            var payload = PackageTokenPacket(packet);
+            SendBuffer(payload, packet);
+        }
+
+        public void SendToken(TPacket packet, OnTokenPacketCallback callback)
+        {
+            if (!TryAssignToken(packet, callback)) return;
+            var payload = PackageTokenPacket(packet);
+            SendBuffer(payload, packet);
+        }
+
+        private void SendBuffer(IO.Buffer buffer, TPacket packet)
+        {
+            socket.Send(buffer.data, 0, buffer.size, SocketFlags.None, out SocketError error);
             if (CheckError(error))
             {
                 Log.Error("SocketError received on Send: " + error);
+                if (packet is ITokenPacket token && !token.TokenResponse)
+                    tokenCallbacks.TryRemove(token.Token, out var dummy);
                 Disconnect();
                 return;
             }
@@ -233,13 +299,30 @@ namespace Utils.NET.Net.Tcp
                     Log.Error($"No {typeof(TPacket).Name} for id: {id}");
                     return;
                 }
-                packet.ReadPacket(r);
-                HandlePacket(packet);
+                if (packet is ITokenPacket token)
+                {
+                    packet.ReadTokenPacket(r);
+                    if (token.TokenResponse)
+                        HandleTokenPacket(packet, token.Token);
+                    else
+                        HandlePacket(packet);
+                }
+                else
+                {
+                    packet.ReadPacket(r);
+                    HandlePacket(packet);
+                }
             }
             finally
             {
                 buffer.Reset(4);
             }
+        }
+
+        private void HandleTokenPacket(TPacket packet, int token)
+        {
+            if (!tokenCallbacks.TryGetValue(token, out var callback)) return;
+            callback(packet, this);
         }
 
         #region Sync

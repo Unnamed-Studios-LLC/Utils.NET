@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils.NET.Logging;
 
 namespace Utils.NET.IO
 {
@@ -132,6 +133,23 @@ namespace Utils.NET.IO
             for (int i = 0; i < length; i++)
                 bytes[i] = ReadUInt8();
             return bytes;
+        }
+
+        private void LogData()
+        {
+            var entry = LogEntry.Init("Read Buffer: ");
+            if (scratchBits >= 32)
+            {
+                if (scratchBits > 32)
+                    entry.Append(Convert.ToString((uint)(scratch >> 32), 2).PadLeft(scratchBits - 32, '0'), ConsoleColor.Red);
+                entry.Append(Convert.ToString((uint)scratch, 2).PadLeft(32, '0'), ConsoleColor.Red);
+            }
+            for (int i = ((int)bitsRead / 32); i < buffer.Length; i++)
+            {
+                entry.Append(Convert.ToString(buffer[i], 2).PadLeft(32, '0'), ConsoleColor.Red);
+                entry.Append("-", ConsoleColor.Red);
+            }
+            Log.Write(entry);
         }
     }
 }

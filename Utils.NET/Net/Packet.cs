@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Text;
 using Utils.NET.IO;
+using Utils.NET.Logging;
 
 namespace Utils.NET.Net
 {
     public abstract class Packet
     {
         public abstract byte Id { get; }
-
 
         public void WritePacket(BitWriter w)
         {
@@ -19,6 +19,27 @@ namespace Utils.NET.Net
         public void ReadPacket(BitReader r)
         {
             r.ReadUInt8(); // read id
+            Read(r);
+        }
+
+        public void WriteTokenPacket(BitWriter w)
+        {
+            w.Write(Id);
+            if (this is ITokenPacket token)
+            {
+                w.Write(token.Token);
+                w.Write(token.TokenResponse);
+            }
+            Write(w);
+        }
+
+        public void ReadTokenPacket(BitReader r)
+        {
+            if (this is ITokenPacket token)
+            {
+                token.Token = r.ReadInt32();
+                token.TokenResponse = r.ReadBool();
+            }
             Read(r);
         }
 

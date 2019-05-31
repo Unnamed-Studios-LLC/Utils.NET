@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils.NET.Logging;
 
 namespace Utils.NET.IO
 {
@@ -31,9 +32,9 @@ namespace Utils.NET.IO
         /// </summary>
         private uint[] buffer = new uint[Default_Length];
 
-        /**
-         * Expands the buffer by the default length
-         */
+        /// <summary>
+        /// Expands the buffer by the default length
+        /// </summary>
         private void ExpandBuffer()
         {
             uint[] newBuffer = new uint[buffer.Length + Default_Length];
@@ -176,6 +177,22 @@ namespace Utils.NET.IO
         {
             for (int i = 0; i < bytes.Length; i++)
                 Write(bytes[i]);
+        }
+
+        private void LogData()
+        {
+            var entry = LogEntry.Init("Write Buffer: ");
+            for (int i = 0; i < (bitsWritten / 32); i++)
+            {
+                entry.Append(Convert.ToString(buffer[i], 2).PadLeft(32, '0'), ConsoleColor.Red);
+                entry.Append("-", ConsoleColor.Red);
+            }
+
+            if (scratchBits > 0)
+            {
+                entry.Append(Convert.ToString((uint)scratch, 2).PadLeft(scratchBits, '0'), ConsoleColor.Red);
+            }
+            Log.Write(entry);
         }
     }
 }
