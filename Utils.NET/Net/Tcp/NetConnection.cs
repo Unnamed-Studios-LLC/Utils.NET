@@ -234,7 +234,7 @@ namespace Utils.NET.Net.Tcp
             SendBuffer(payload, packet);
         }
 
-        public void SendToken(TPacket packet)
+        public void SendTokenResponse(TPacket packet)
         {
             if (packet is ITokenPacket token)
                 token.TokenResponse = true;
