@@ -8,4 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="IO\Tbon\" />
+  </ItemGroup>
 </Project>

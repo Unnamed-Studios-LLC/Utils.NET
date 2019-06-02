@@ -244,6 +244,7 @@ namespace Utils.NET.Logging
 
         private void WriteTimestamp()
         {
+            Console.ForegroundColor = ConsoleColor.White;
             Console.Write('[');
             Console.Write(DateTime.Now);
             Console.Write("] ");
