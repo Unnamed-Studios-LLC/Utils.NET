@@ -9,7 +9,7 @@ namespace Utils.NET.Net.Udp.Packets
         Connect,
         Challenge,
         Solution,
-        Disconnect,
-        AwaitingState
+        Connected,
+        Disconnect
     }
 }

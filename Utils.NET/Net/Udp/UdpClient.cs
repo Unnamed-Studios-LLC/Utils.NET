@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Timers;
 using Utils.NET.IO;
 using Utils.NET.Logging;
 using Utils.NET.Net.Udp.Packets;
@@ -17,7 +18,7 @@ namespace Utils.NET.Net.Udp
         {
             ReadyToConnect = 0,
             Connected = 1,
-            AwaitingChallange = 2,
+            AwaitingChallenge = 2,
             AwaitingConnected = 3,
             Disconnected = 4
         }
@@ -34,7 +35,20 @@ namespace Utils.NET.Net.Udp
             }
         }
 
+        /// <summary>
+        /// The max size of a Udp packet
+        /// </summary>
         private const int Max_Packet_Size = 512;
+
+        /// <summary>
+        /// The delay, is milliseconds, before resending a connection packet
+        /// </summary>
+        private const double Connection_Retry_Delay = 500;
+
+        /// <summary>
+        /// The amount of times to resend a connection packet before failure
+        /// </summary>
+        private const int Connection_Retry_Amount = 5;
 
         /// <summary>
         /// Underlying system socket used to send and receive data
@@ -88,6 +102,11 @@ namespace Utils.NET.Net.Udp
         private int disconnected = 0;
 
         /// <summary>
+        /// The time that the last packet was sent
+        /// </summary>
+        private DateTime lastSent = DateTime.Now;
+
+        /// <summary>
         /// Salt generated locally
         /// </summary>
         private ulong localSalt;
@@ -101,6 +120,16 @@ namespace Utils.NET.Net.Udp
         /// Generated salt from server/client
         /// </summary>
         private ulong salt;
+
+        /// <summary>
+        /// Timer used to check timeouts and connection packet delivery
+        /// </summary>
+        private System.Timers.Timer timer;
+
+        /// <summary>
+        /// The amount of times a connection packet has been resent
+        /// </summary>
+        private int retryCount = 0;
 
         #region Init
 
@@ -120,6 +149,56 @@ namespace Utils.NET.Net.Udp
         {
             packetFactory = new PacketFactory<TPacket>();
             buffer = new IO.Buffer(Max_Packet_Size);
+
+            timer = new System.Timers.Timer(Connection_Retry_Delay / 2);
+            timer.Elapsed += OnTimer;
+            timer.Start();
+        }
+
+        #endregion
+
+        #region Timer
+
+        private void OnTimer(object sender, EventArgs e)
+        {
+            var s = State;
+            switch (s)
+            {
+                case ConnectionState.Connected:
+
+                    break;
+                case ConnectionState.AwaitingChallenge:
+                    if (CheckResend())
+                    {
+                        SendConnect();
+                    }
+                    break;
+                case ConnectionState.AwaitingConnected:
+                    if (CheckResend())
+                    {
+                        SendSolution();
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Checks the retry count to determine if a connection packet can be resent
+        /// </summary>
+        /// <returns></returns>
+        private bool CheckResend()
+        {
+            int count = retryCount;
+            if (Interlocked.CompareExchange(ref retryCount, count + 1, count) == count)
+            {
+                bool retry = retryCount >= Connection_Retry_Amount;
+                if (!retry) // disconnect
+                {
+                    Disconnect();
+                }
+                return retry;
+            }
+            return false;
         }
 
         #endregion
@@ -153,12 +232,33 @@ namespace Utils.NET.Net.Udp
         public void Connect(EndPoint endpoint)
         {
             // return if already started connection process
-            if (!SetConnectionState(ConnectionState.AwaitingChallange, ConnectionState.ReadyToConnect)) return;
+            if (!SetConnectionState(ConnectionState.AwaitingChallenge, ConnectionState.ReadyToConnect)) return;
             remoteEndPoint = endpoint;
             socket.Bind(new IPEndPoint(IPAddress.Any, 0));
             localSalt = Udp.GenerateLocalSalt();
+            SendConnect();
+        }
+
+        /// <summary>
+        /// Sends the connection request packet
+        /// </summary>
+        private void SendConnect()
+        {
             SendUdp(new UdpConnect(localSalt));
         }
+
+        /// <summary>
+        /// Sends the connection solution packet
+        /// </summary>
+        private void SendSolution()
+        {
+            SendUdp(new UdpSolution(salt));
+        }
+
+        /// <summary>
+        /// Called when this client is connected to a remote host
+        /// </summary>
+        protected abstract void HandleConnected(bool success);
 
         /// <summary>
         /// Sets the connection state from a previous state, and returns true if successful
@@ -187,18 +287,21 @@ namespace Utils.NET.Net.Udp
         public bool Disconnect()
         {
             if (Interlocked.CompareExchange(ref disconnected, 1, 0) == 1) return false; // return if this method was already called
-            if (SetConnectionState(ConnectionState.Disconnected) == ConnectionState.Connected)
+            var currentState = SetConnectionState(ConnectionState.Disconnected);
+            switch (currentState)
             {
-                SendUdp(new UdpDisconnect(salt)); // only send if already connected
+                case ConnectionState.Connected:
+                    SendUdp(new UdpDisconnect(salt)); // only send if already connected
+                    HandleDisconnect();
+                    break;
+                case ConnectionState.AwaitingChallenge:
+                case ConnectionState.AwaitingConnected:
+                    HandleConnected(false);
+                    break;
             }
-            DoDisconnect();
-            return true;
-        }
-
-        protected virtual void DoDisconnect()
-        {
-            HandleDisconnect();
             socket.Close();
+            timer.Stop();
+            return true;
         }
 
         /// <summary>
@@ -273,10 +376,10 @@ namespace Utils.NET.Net.Udp
             switch (packet.Type)
             {
                 case UdpPacketType.Challenge:
-                    RespondToChallenge((UdpChallenge)packet);
+                    HandleChallenge((UdpChallenge)packet);
                     break;
-                case UdpPacketType.AwaitingState:
-                    if (currentState != ConnectionState.Connected) return;
+                case UdpPacketType.Connected:
+                    HandleConnected((UdpConnected)packet);
                     break;
             }
         }
@@ -296,10 +399,10 @@ namespace Utils.NET.Net.Udp
                     return new UdpChallenge();
                 case UdpPacketType.Solution:
                     return new UdpSolution();
+                case UdpPacketType.Connected:
+                    return new UdpConnected();
                 case UdpPacketType.Disconnect:
                     return new UdpDisconnect();
-                case UdpPacketType.AwaitingState:
-                    return new UdpAwaitingState();
             }
             return null;
         }
@@ -308,16 +411,27 @@ namespace Utils.NET.Net.Udp
         /// Responds to a challenge packet received from the remote server
         /// </summary>
         /// <param name="challenge">Challenge.</param>
-        private void RespondToChallenge(UdpChallenge challenge)
+        private void HandleChallenge(UdpChallenge challenge)
         {
             if (challenge.clientSalt != localSalt) return; // salt mismatch, could be spoofed sender
-            if (State == ConnectionState.AwaitingChallange)
-            {
-                if (!SetConnectionState(ConnectionState.Connected, ConnectionState.AwaitingChallange)) return;
-                remoteSalt = challenge.serverSalt;
-                salt = Udp.CreateSalt(localSalt, remoteSalt);
-            }
-            SendUdp(new UdpSolution(salt));
+            if (!SetConnectionState(ConnectionState.AwaitingConnected, ConnectionState.AwaitingChallenge)) return;
+            remoteSalt = challenge.serverSalt;
+            salt = Udp.CreateSalt(localSalt, remoteSalt);
+            retryCount = 0;
+            SendSolution();
+        }
+
+        /// <summary>
+        /// Handles a connected packet received from the remote host
+        /// </summary>
+        /// <param name="connected"></param>
+        private void HandleConnected(UdpConnected connected)
+        {
+            if (connected.salt != salt) return; // salt mismatch, could be spoofed sender
+            if (!SetConnectionState(ConnectionState.Connected, ConnectionState.AwaitingConnected)) return;
+            remoteEndPoint = new IPEndPoint(((IPEndPoint)remoteEndPoint).Address, connected.port);
+            retryCount = 0;
+            HandleConnected(true);
         }
 
         #endregion
@@ -342,6 +456,10 @@ namespace Utils.NET.Net.Udp
             Send(new SendData(packet, true));
         }
 
+        /// <summary>
+        /// Sends data or adds it to a queue if already sending
+        /// </summary>
+        /// <param name="data"></param>
         private void Send(SendData data)
         {
             lock (sendSync)
@@ -363,6 +481,7 @@ namespace Utils.NET.Net.Udp
         /// <param name="packet">Packet.</param>
         private void SendPacket(SendData packet)
         {
+            lastSent = DateTime.Now;
             var package = PackagePacket(packet);
             socket.BeginSendTo(package.data, 0, package.size, SocketFlags.None, remoteEndPoint, OnSend, null);
         }
