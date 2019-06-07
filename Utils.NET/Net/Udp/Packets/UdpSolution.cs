@@ -14,6 +14,8 @@ namespace Utils.NET.Net.Udp.Packets
         /// </summary>
         public ulong salt;
 
+        public UdpSolution() { }
+
         public UdpSolution(ulong salt) => this.salt = salt;
 
         protected override void Read(BitReader r)

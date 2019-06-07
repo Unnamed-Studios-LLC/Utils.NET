@@ -15,9 +15,11 @@ namespace Utils.NET.Net.Udp
     {
         private enum ConnectionState
         {
-            Disconnected = 0,
+            ReadyToConnect = 0,
             Connected = 1,
-            Connecting = 2
+            AwaitingChallange = 2,
+            AwaitingConnected = 3,
+            Disconnected = 4
         }
 
         private class SendData
@@ -32,7 +34,7 @@ namespace Utils.NET.Net.Udp
             }
         }
 
-        private const int Max_Packet_Size = 980;
+        private const int Max_Packet_Size = 512;
 
         /// <summary>
         /// Underlying system socket used to send and receive data
@@ -47,7 +49,13 @@ namespace Utils.NET.Net.Udp
         /// <summary>
         /// The state of the virtual connection
         /// </summary>
-        private ConnectionState state = ConnectionState.Disconnected;
+        private int state = 0;
+
+        /// <summary>
+        /// The current connection state of the client
+        /// </summary>
+        /// <value>The state.</value>
+        private ConnectionState State => (ConnectionState)state;
 
         /// <summary>
         /// Factory used to create packets
@@ -96,13 +104,13 @@ namespace Utils.NET.Net.Udp
 
         #region Init
 
-        public UdpClient()
+        protected UdpClient()
         {
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             Init();
         }
 
-        public UdpClient(Socket socket)
+        protected UdpClient(Socket socket)
         {
             this.socket = socket;
             Init();
@@ -144,14 +152,45 @@ namespace Utils.NET.Net.Udp
         /// <param name="endpoint"></param>
         public void Connect(EndPoint endpoint)
         {
+            // return if already started connection process
+            if (!SetConnectionState(ConnectionState.AwaitingChallange, ConnectionState.ReadyToConnect)) return;
             remoteEndPoint = endpoint;
             socket.Bind(new IPEndPoint(IPAddress.Any, 0));
+            localSalt = Udp.GenerateLocalSalt();
+            SendUdp(new UdpConnect(localSalt));
         }
 
+        /// <summary>
+        /// Sets the connection state from a previous state, and returns true if successful
+        /// </summary>
+        /// <returns><c>true</c>, if connection state was set, <c>false</c> otherwise.</returns>
+        /// <param name="newState">New state.</param>
+        /// <param name="fromState">From state.</param>
+        private bool SetConnectionState(ConnectionState newState, ConnectionState fromState)
+        {
+            return Interlocked.CompareExchange(ref state, (int)newState, (int)fromState) == (int)fromState;
+        }
+
+        /// <summary>
+        /// Sets the connection state atomically
+        /// </summary>
+        /// <param name="newState">New state.</param>
+        private ConnectionState SetConnectionState(ConnectionState newState)
+        {
+            return (ConnectionState)Interlocked.Exchange(ref state, (int)newState);
+        }
+
+        /// <summary>
+        /// Disconnect client from the virtual connection
+        /// </summary>
+        /// <returns>The disconnect.</returns>
         public bool Disconnect()
         {
             if (Interlocked.CompareExchange(ref disconnected, 1, 0) == 1) return false; // return if this method was already called
-            SendUdp(new UdpDisconnect());
+            if (SetConnectionState(ConnectionState.Disconnected) == ConnectionState.Connected)
+            {
+                SendUdp(new UdpDisconnect(salt)); // only send if already connected
+            }
             DoDisconnect();
             return true;
         }
@@ -176,7 +215,7 @@ namespace Utils.NET.Net.Udp
         /// </summary>
         public void StartRead()
         {
-            if (state != ConnectionState.Connected) return;
+            if (State != ConnectionState.Connected) return;
             BeginRead();
         }
 
@@ -198,7 +237,16 @@ namespace Utils.NET.Net.Udp
 
             byte[] data = buffer.data;
             BitReader r = new BitReader(data, length);
+            bool isUdp = r.ReadBool();
             byte id = r.ReadUInt8();
+            if (isUdp)
+            {
+                var udpPacket = CreateUdpPacket(id);
+                udpPacket.ReadPacket(r);
+                HandleUdpPacket(udpPacket);
+                return;
+            }
+
             TPacket packet = packetFactory.CreatePacket(id);
             if (packet == null)
             {
@@ -214,6 +262,63 @@ namespace Utils.NET.Net.Udp
         /// </summary>
         /// <param name="packet">Packet.</param>
         protected abstract void HandlePacket(TPacket packet);
+
+        /// <summary>
+        /// Handles a received UdpPacket
+        /// </summary>
+        /// <param name="packet">Packet.</param>
+        private void HandleUdpPacket(UdpPacket packet)
+        {
+            var currentState = State;
+            switch (packet.Type)
+            {
+                case UdpPacketType.Challenge:
+                    RespondToChallenge((UdpChallenge)packet);
+                    break;
+                case UdpPacketType.AwaitingState:
+                    if (currentState != ConnectionState.Connected) return;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Creates a UdpPacket from a given type id
+        /// </summary>
+        /// <returns>The UDP packet.</returns>
+        /// <param name="id">Identifier.</param>
+        private UdpPacket CreateUdpPacket(byte id)
+        {
+            switch ((UdpPacketType)id)
+            {
+                case UdpPacketType.Connect:
+                    return new UdpConnect();
+                case UdpPacketType.Challenge:
+                    return new UdpChallenge();
+                case UdpPacketType.Solution:
+                    return new UdpSolution();
+                case UdpPacketType.Disconnect:
+                    return new UdpDisconnect();
+                case UdpPacketType.AwaitingState:
+                    return new UdpAwaitingState();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Responds to a challenge packet received from the remote server
+        /// </summary>
+        /// <param name="challenge">Challenge.</param>
+        private void RespondToChallenge(UdpChallenge challenge)
+        {
+            if (challenge.clientSalt != localSalt) return; // salt mismatch, could be spoofed sender
+            if (State == ConnectionState.AwaitingChallange)
+            {
+                if (!SetConnectionState(ConnectionState.Connected, ConnectionState.AwaitingChallange)) return;
+                remoteSalt = challenge.serverSalt;
+                salt = Udp.CreateSalt(localSalt, remoteSalt);
+            }
+            SendUdp(new UdpSolution(salt));
+        }
 
         #endregion
 
@@ -288,7 +393,7 @@ namespace Utils.NET.Net.Udp
         /// Packages a packet into a buffer to send
         /// </summary>
         /// <returns>The packet.</returns>
-        /// <param name="packet">Packet.</param>
+        /// <param name="data">The packet data to send</param>
         private IO.Buffer PackagePacket(SendData data)
         {
             var w = new BitWriter();
