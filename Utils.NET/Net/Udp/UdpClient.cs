@@ -23,18 +23,6 @@ namespace Utils.NET.Net.Udp
             Disconnected = 4
         }
 
-        private class SendData
-        {
-            public Packet packet;
-            public bool udp;
-
-            public SendData(Packet packet, bool udp)
-            {
-                this.packet = packet;
-                this.udp = udp;
-            }
-        }
-
         /// <summary>
         /// The max size of a Udp packet
         /// </summary>
@@ -94,7 +82,7 @@ namespace Utils.NET.Net.Udp
         /// <summary>
         /// Queue used to store data ready to send
         /// </summary>
-        private Queue<SendData> sendQueue = new Queue<SendData>();
+        private Queue<UdpSendData> sendQueue = new Queue<UdpSendData>();
 
         /// <summary>
         /// Value used to syncronize disconnection calls
@@ -344,7 +332,7 @@ namespace Utils.NET.Net.Udp
             byte id = r.ReadUInt8();
             if (isUdp)
             {
-                var udpPacket = CreateUdpPacket(id);
+                var udpPacket = Udp.CreateUdpPacket(id);
                 udpPacket.ReadPacket(r);
                 HandleUdpPacket(udpPacket);
                 return;
@@ -385,29 +373,6 @@ namespace Utils.NET.Net.Udp
         }
 
         /// <summary>
-        /// Creates a UdpPacket from a given type id
-        /// </summary>
-        /// <returns>The UDP packet.</returns>
-        /// <param name="id">Identifier.</param>
-        private UdpPacket CreateUdpPacket(byte id)
-        {
-            switch ((UdpPacketType)id)
-            {
-                case UdpPacketType.Connect:
-                    return new UdpConnect();
-                case UdpPacketType.Challenge:
-                    return new UdpChallenge();
-                case UdpPacketType.Solution:
-                    return new UdpSolution();
-                case UdpPacketType.Connected:
-                    return new UdpConnected();
-                case UdpPacketType.Disconnect:
-                    return new UdpDisconnect();
-            }
-            return null;
-        }
-
-        /// <summary>
         /// Responds to a challenge packet received from the remote server
         /// </summary>
         /// <param name="challenge">Challenge.</param>
@@ -444,7 +409,7 @@ namespace Utils.NET.Net.Udp
         /// <param name="packet">Packet.</param>
         public void Send(TPacket packet)
         {
-            Send(new SendData(packet, false));
+            Send(new UdpSendData(packet, false));
         }
 
         /// <summary>
@@ -453,14 +418,14 @@ namespace Utils.NET.Net.Udp
         /// <param name="packet"></param>
         private void SendUdp(UdpPacket packet)
         {
-            Send(new SendData(packet, true));
+            Send(new UdpSendData(packet, true));
         }
 
         /// <summary>
         /// Sends data or adds it to a queue if already sending
         /// </summary>
         /// <param name="data"></param>
-        private void Send(SendData data)
+        private void Send(UdpSendData data)
         {
             lock (sendSync)
             {
@@ -479,7 +444,7 @@ namespace Utils.NET.Net.Udp
         /// Sends a packet to the remote 
         /// </summary>
         /// <param name="packet">Packet.</param>
-        private void SendPacket(SendData packet)
+        private void SendPacket(UdpSendData packet)
         {
             lastSent = DateTime.Now;
             var package = PackagePacket(packet);
@@ -494,7 +459,7 @@ namespace Utils.NET.Net.Udp
         {
             int sent = socket.EndSendTo(ar);
 
-            SendData nextPacket;
+            UdpSendData nextPacket;
             lock (sendSync)
             {
                 if (sendQueue.Count == 0)
@@ -513,7 +478,7 @@ namespace Utils.NET.Net.Udp
         /// </summary>
         /// <returns>The packet.</returns>
         /// <param name="data">The packet data to send</param>
-        private IO.Buffer PackagePacket(SendData data)
+        private IO.Buffer PackagePacket(UdpSendData data)
         {
             var w = new BitWriter();
             w.Write(data.udp);
