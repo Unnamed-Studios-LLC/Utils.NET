@@ -88,6 +88,11 @@ namespace Utils.NET.Net.Udp
         private readonly ConcurrentDictionary<IPAddress, ConnectRequestState> requestStates = new ConcurrentDictionary<IPAddress, ConnectRequestState>();
 
         /// <summary>
+        /// Dictionary containing all current connections
+        /// </summary>
+        private readonly ConcurrentDictionary<IPAddress, TCon> connections = new ConcurrentDictionary<IPAddress, TCon>();
+
+        /// <summary>
         /// Queue of data ready to be sent
         /// </summary>
         private readonly Queue<SendData> sendQueue = new Queue<SendData>();
@@ -178,6 +183,12 @@ namespace Utils.NET.Net.Udp
         {
             var ipEndpoint = (IPEndPoint)endpoint;
             var address = ipEndpoint.Address;
+
+            if (connections.TryGetValue(address, out var connection))
+            {
+
+            }
+
             var state = CreateConnectionRequest(connect.clientSalt, address);
             requestStates[address] = state;
 
