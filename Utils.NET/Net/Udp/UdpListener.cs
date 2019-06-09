@@ -184,10 +184,7 @@ namespace Utils.NET.Net.Udp
             var ipEndpoint = (IPEndPoint)endpoint;
             var address = ipEndpoint.Address;
 
-            if (connections.TryGetValue(address, out var connection))
-            {
-
-            }
+            if (connections.TryGetValue(address, out var connection)) return;
 
             var state = CreateConnectionRequest(connect.clientSalt, address);
             requestStates[address] = state;
@@ -247,7 +244,8 @@ namespace Utils.NET.Net.Udp
 
             byte[] data = new byte[length];
             System.Buffer.BlockCopy(buffer.data, 0, data, 0, length);
-            BeginRead(); // start reading for more packets
+            BeginRead(); // start reading for more packets
+
             BitReader r = new BitReader(data, length);
             bool isUdp = r.ReadBool();
             if (!isUdp) return; // only accept udp packets
