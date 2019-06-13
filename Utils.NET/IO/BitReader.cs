@@ -93,7 +93,12 @@ namespace Utils.NET.IO
         public byte ReadUInt8() => (byte)Read(8);
         public ushort ReadUInt16() => (ushort)Read(16);
         public uint ReadUInt32() => Read(32);
-        public ulong ReadUInt64() => (ulong)Read(32) | ((ulong)Read(32) << 32);
+        public ulong ReadUInt64()
+        {
+            ulong a = Read(32);
+            ulong b = ((ulong)Read(32) << 32);
+            return a | b;
+        }
 
         public sbyte ReadInt8() => (sbyte)Read(8);
         public short ReadInt16() => (short)Read(16);
@@ -135,7 +140,7 @@ namespace Utils.NET.IO
             return bytes;
         }
 
-        private void LogData()
+        public void LogData()
         {
             var entry = LogEntry.Init("Read Buffer: ");
             if (scratchBits >= 32)

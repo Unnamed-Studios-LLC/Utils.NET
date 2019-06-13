@@ -18,7 +18,7 @@ namespace Utils.NET.Net
 
         public void ReadPacket(BitReader r)
         {
-            r.ReadUInt8(); // read id
+            //r.ReadUInt8(); // read id
             Read(r);
         }
 

@@ -179,7 +179,7 @@ namespace Utils.NET.IO
                 Write(bytes[i]);
         }
 
-        private void LogData()
+        public void LogData()
         {
             var entry = LogEntry.Init("Write Buffer: ");
             for (int i = 0; i < (bitsWritten / 32); i++)

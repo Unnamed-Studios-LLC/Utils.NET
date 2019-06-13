@@ -14,18 +14,50 @@ namespace Utils.NET.Net.Udp.Packets
         /// </summary>
         public ulong salt;
 
+        /// <summary>
+        /// The reason for disconnect
+        /// </summary>
+        public UdpDisconnectReason reason;
+
+        /// <summary>
+        /// Custom set disconenct reason
+        /// </summary>
+        public string message;
+
+        /// <summary>
+        /// Gets the disconnect reason string
+        /// </summary>
+        public string ReasonString => reason == UdpDisconnectReason.Custom ? message : reason.ToString();
+
         public UdpDisconnect() { }
 
-        public UdpDisconnect(ulong salt) => this.salt = salt;
+        public UdpDisconnect(ulong salt, UdpDisconnectReason reason)
+        {
+            this.salt = salt;
+            this.reason = reason;
+        }
+
+        public UdpDisconnect(ulong salt, string message)
+        {
+            this.salt = salt;
+            reason = UdpDisconnectReason.Custom;
+            this.message = message;
+        }
 
         protected override void Read(BitReader r)
         {
             salt = r.ReadUInt64();
+            reason = (UdpDisconnectReason)r.Read(4);
+            if (reason == UdpDisconnectReason.Custom)
+                message = r.ReadUTF();
         }
 
         protected override void Write(BitWriter w)
         {
             w.Write(salt);
+            w.Write((byte)reason, 4);
+            if (reason == UdpDisconnectReason.Custom)
+                w.Write(message);
         }
     }
 }

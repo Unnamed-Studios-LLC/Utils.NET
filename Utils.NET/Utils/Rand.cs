@@ -7,6 +7,17 @@ namespace Utils.NET.Utils
     {
         private static ThreadLocal<Random> randoms = new ThreadLocal<Random>();
 
+        private static Random random
+        {
+            get
+            {
+                if (randoms.IsValueCreated) return randoms.Value;
+                Random rnd = new Random((int)DateTime.Now.Ticks);
+                randoms.Value = rnd;
+                return rnd;
+            }
+        }
+
         #region Integer
 
         /// <summary>
@@ -17,7 +28,7 @@ namespace Utils.NET.Utils
         /// <param name="max">The maximum output (exclusive)</param>
         public static int Range(int min, int max)
         {
-            return randoms.Value.Next(min, max);
+            return random.Next(min, max);
         }
 
         /// <summary>
@@ -49,7 +60,7 @@ namespace Utils.NET.Utils
         /// <returns>The value.</returns>
         public static float FloatValue()
         {
-            return (float)randoms.Value.NextDouble();
+            return (float)random.NextDouble();
         }
 
         /// <summary>

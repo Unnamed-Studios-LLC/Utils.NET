@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Utils.NET.IO;
+using Utils.NET.Logging;
 
 namespace Utils.NET.Net.Udp.Packets
 {

@@ -9,11 +9,20 @@ using System.Timers;
 using Utils.NET.IO;
 using Utils.NET.Logging;
 using Utils.NET.Net.Udp.Packets;
+using Utils.NET.Utils;
 
 namespace Utils.NET.Net.Udp
 {
     public abstract class UdpClient<TPacket> where TPacket : Packet
     {
+        public enum ConnectStatus
+        {
+            Success,
+            NoChallengeReceived,
+            NoConnectedReceived,
+            Disconnect
+        }
+
         private enum ConnectionState
         {
             ReadyToConnect = 0,
@@ -21,6 +30,31 @@ namespace Utils.NET.Net.Udp
             AwaitingChallenge = 2,
             AwaitingConnected = 3,
             Disconnected = 4
+        }
+
+        private struct PacketHeader
+        {
+            /// <summary>
+            /// The sequence id of this packet
+            /// </summary>
+            public ushort sequenceId;
+
+            /// <summary>
+            /// The last received sequence id
+            /// </summary>
+            public ushort lastReceivedId;
+
+            /// <summary>
+            /// Bitfield containing received sequence info
+            /// </summary>
+            public uint receivedBitfield;
+
+            public PacketHeader(BitReader r)
+            {
+                sequenceId = r.ReadUInt16();
+                lastReceivedId = r.ReadUInt16();
+                receivedBitfield = r.ReadUInt32();
+            }
         }
 
         /// <summary>
@@ -32,6 +66,13 @@ namespace Utils.NET.Net.Udp
         /// The delay, is milliseconds, before resending a connection packet
         /// </summary>
         private const double Connection_Retry_Delay = 500;
+
+#if DEBUG
+        /// <summary>
+        /// Percentage of simulated packet loss
+        /// </summary>
+        private const double Simulate_Packet_Loss_Percent = -1;
+#endif
 
         /// <summary>
         /// The amount of times to resend a connection packet before failure
@@ -85,6 +126,11 @@ namespace Utils.NET.Net.Udp
         private Queue<UdpSendData> sendQueue = new Queue<UdpSendData>();
 
         /// <summary>
+        /// Dictionary containing sent packets waiting for verification
+        /// </summary>
+        private ConcurrentDictionary<ushort, Packet> sentPackets = new ConcurrentDictionary<ushort, Packet>();
+
+        /// <summary>
         /// Value used to syncronize disconnection calls
         /// </summary>
         private int disconnected = 0;
@@ -93,6 +139,11 @@ namespace Utils.NET.Net.Udp
         /// The time that the last packet was sent
         /// </summary>
         private DateTime lastSent = DateTime.Now;
+
+        /// <summary>
+        /// The time that this client last received data
+        /// </summary>
+        private DateTime lastReceived = DateTime.Now;
 
         /// <summary>
         /// Salt generated locally
@@ -107,7 +158,7 @@ namespace Utils.NET.Net.Udp
         /// <summary>
         /// Generated salt from server/client
         /// </summary>
-        private ulong salt;
+        public ulong salt;
 
         /// <summary>
         /// Timer used to check timeouts and connection packet delivery
@@ -119,28 +170,55 @@ namespace Utils.NET.Net.Udp
         /// </summary>
         private int retryCount = 0;
 
+        /// <summary>
+        /// The local port that this client is bound to
+        /// </summary>
+        public int LocalPort => ((IPEndPoint)socket.LocalEndPoint).Port;
+
+        /// <summary>
+        /// The next packet sequence id
+        /// </summary>
+        private ushort nextSequenceId = 0;
+
+        /// <summary>
+        /// The last received sequence id
+        /// </summary>
+        private ushort lastReceivedSequenceId = 0;
+
+        /// <summary>
+        /// Bitfield representing received packets
+        /// </summary>
+        private uint receivedBitfield = 0;
+
+        /// <summary>
+        /// Object used to sync sequence work
+        /// </summary>
+        private object sequenceLock = new object();
+
         #region Init
 
-        protected UdpClient()
+        public UdpClient()
         {
-            socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            Init();
-        }
-
-        protected UdpClient(Socket socket)
-        {
-            this.socket = socket;
             Init();
         }
 
         private void Init()
         {
+            socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
             packetFactory = new PacketFactory<TPacket>();
             buffer = new IO.Buffer(Max_Packet_Size);
 
             timer = new System.Timers.Timer(Connection_Retry_Delay / 2);
             timer.Elapsed += OnTimer;
-            timer.Start();
+        }
+
+        public void SetConnectedTo(EndPoint endpoint, ulong salt, int localPort)
+        {
+            this.salt = salt;
+            remoteEndPoint = endpoint;
+            SetConnectionState(ConnectionState.Connected);
+            socket.Bind(new IPEndPoint(IPAddress.Any, localPort));
         }
 
         #endregion
@@ -160,11 +238,19 @@ namespace Utils.NET.Net.Udp
                     {
                         SendConnect();
                     }
+                    else
+                    {
+                        ConnectFailed(ConnectionState.AwaitingChallenge, ConnectStatus.NoChallengeReceived);
+                    }
                     break;
                 case ConnectionState.AwaitingConnected:
                     if (CheckResend())
                     {
                         SendSolution();
+                    }
+                    else
+                    {
+                        ConnectFailed(ConnectionState.AwaitingConnected, ConnectStatus.NoConnectedReceived);
                     }
                     break;
             }
@@ -179,12 +265,7 @@ namespace Utils.NET.Net.Udp
             int count = retryCount;
             if (Interlocked.CompareExchange(ref retryCount, count + 1, count) == count)
             {
-                bool retry = retryCount >= Connection_Retry_Amount;
-                if (!retry) // disconnect
-                {
-                    Disconnect();
-                }
-                return retry;
+                return retryCount < Connection_Retry_Amount;
             }
             return false;
         }
@@ -224,6 +305,8 @@ namespace Utils.NET.Net.Udp
             remoteEndPoint = endpoint;
             socket.Bind(new IPEndPoint(IPAddress.Any, 0));
             localSalt = Udp.GenerateLocalSalt();
+            timer.Start();
+            StartRead();
             SendConnect();
         }
 
@@ -246,7 +329,7 @@ namespace Utils.NET.Net.Udp
         /// <summary>
         /// Called when this client is connected to a remote host
         /// </summary>
-        protected abstract void HandleConnected(bool success);
+        protected abstract void HandleConnected(ConnectStatus status);
 
         /// <summary>
         /// Sets the connection state from a previous state, and returns true if successful
@@ -272,24 +355,42 @@ namespace Utils.NET.Net.Udp
         /// Disconnect client from the virtual connection
         /// </summary>
         /// <returns>The disconnect.</returns>
-        public bool Disconnect()
+        public bool Disconnect(bool initiate = true)
         {
             if (Interlocked.CompareExchange(ref disconnected, 1, 0) == 1) return false; // return if this method was already called
             var currentState = SetConnectionState(ConnectionState.Disconnected);
             switch (currentState)
             {
                 case ConnectionState.Connected:
-                    SendUdp(new UdpDisconnect(salt)); // only send if already connected
+                    if (initiate)
+                    {
+                        SendUdp(new UdpDisconnect(salt, UdpDisconnectReason.ClientDisconnect)); // only send if already connected and initiating the disconnect
+                    }
                     HandleDisconnect();
+                    socket.Close();
                     break;
                 case ConnectionState.AwaitingChallenge:
                 case ConnectionState.AwaitingConnected:
-                    HandleConnected(false);
-                    break;
+                    ConnectFailed(ConnectionState.Disconnected, ConnectStatus.Disconnect);
+                    return true;
             }
-            socket.Close();
+
             timer.Stop();
             return true;
+        }
+
+        /// <summary>
+        /// Connection failed if the current state equals the given state
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="status"></param>
+        private void ConnectFailed(ConnectionState state, ConnectStatus status)
+        {
+            if (State != state) return;
+            SetConnectionState(ConnectionState.ReadyToConnect);
+            retryCount = 0;
+            timer.Stop();
+            HandleConnected(status);
         }
 
         /// <summary>
@@ -306,7 +407,6 @@ namespace Utils.NET.Net.Udp
         /// </summary>
         public void StartRead()
         {
-            if (State != ConnectionState.Connected) return;
             BeginRead();
         }
 
@@ -326,26 +426,176 @@ namespace Utils.NET.Net.Udp
         {
             int length = socket.EndReceiveFrom(ar, ref remoteEndPoint);
 
-            byte[] data = buffer.data;
-            BitReader r = new BitReader(data, length);
-            bool isUdp = r.ReadBool();
-            byte id = r.ReadUInt8();
-            if (isUdp)
-            {
-                var udpPacket = Udp.CreateUdpPacket(id);
-                udpPacket.ReadPacket(r);
-                HandleUdpPacket(udpPacket);
-                return;
-            }
+            // TODO handle failed read or socket closed
 
-            TPacket packet = packetFactory.CreatePacket(id);
-            if (packet == null)
+            try
             {
-                Log.Error($"No {typeof(TPacket).Name} for id: {id}");
-                return;
+                BitReader r = new BitReader(buffer.data, length);
+                bool isUdp = r.ReadBool();
+                byte id;
+                if (isUdp)
+                {
+                    id = r.ReadUInt8();
+                    var udpPacket = Udp.CreateUdpPacket(id);
+                    if (udpPacket == null) return;
+                    udpPacket.ReadPacket(r);
+                    HandleUdpPacket(udpPacket);
+                    return;
+                }
+
+                ulong receivedSalt = r.ReadUInt64();
+                if (receivedSalt != salt) return; // salt mismatch
+
+#if DEBUG
+                if (Rand.Next(10000) / 100.0 < Simulate_Packet_Loss_Percent)
+                {
+                    Log.Error("Stopped packet: " + r.ReadUInt16());
+                    return;
+                }
+#endif
+
+                var header = ReadHeader(r); // process header
+                if (!HandlePacketHeader(header)) return;
+
+                id = r.ReadUInt8(); // read packet payload
+                TPacket packet = packetFactory.CreatePacket(id);
+                if (packet == null)
+                {
+                    Log.Error($"No {typeof(TPacket).Name} for id: {id}");
+                    return;
+                }
+                packet.ReadPacket(r);
+                HandlePacket(packet);
             }
-            packet.ReadPacket(r);
-            HandlePacket(packet);
+            finally
+            {
+                BeginRead();
+            }
+        }
+
+        /// <summary>
+        /// Handles a received packet header
+        /// </summary>
+        /// <param name="header"></param>
+        private bool HandlePacketHeader(PacketHeader header)
+        {
+            Log.Write("Received seq id: " + header.sequenceId);
+            HandleReceivedBitfield(header.lastReceivedId, header.receivedBitfield);
+            return HandleSequenceId(header.sequenceId);
+        }
+
+        /// <summary>
+        /// Handles remote's sequence id and logs the receive info in the local bitfield
+        /// </summary>
+        /// <param name="sequenceId"></param>
+        /// <returns></returns>
+        private bool HandleSequenceId(ushort sequenceId)
+        {
+            lock (sequenceLock)
+            {
+                var currentId = lastReceivedSequenceId;
+                var currentBitfield = receivedBitfield;
+                if (lastReceivedSequenceId == sequenceId) return false; // already processed this
+
+                var dif = GetSequenceDifference(currentId, sequenceId);
+
+                if (dif > 0) // advance sequence packet
+                {
+                    lastReceivedSequenceId = sequenceId;
+                    if (dif == 32)
+                    {
+                        receivedBitfield = (uint)1 << 31;
+                    }
+                    else if (dif <= 32)
+                    {
+                        receivedBitfield = (receivedBitfield << dif) | ((uint)1 << (dif - 1));
+                    }
+                    else
+                    {
+                        receivedBitfield = 0;
+                    }
+
+                    return true;
+                }
+                else // don't advance sequence
+                {
+                    dif = -dif;
+                    if (dif <= 32)
+                    {
+                        bool alreadyProcessed = ((receivedBitfield >> (dif - 1)) & 1) == 1;
+                        if (alreadyProcessed) return false; // already received / processed
+                        receivedBitfield |= (uint)1 << (dif - 1);
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles the header information regarding remote received packets
+        /// </summary>
+        /// <param name="lastReceivedId"></param>
+        /// <param name="bitfield"></param>
+        private void HandleReceivedBitfield(ushort lastReceivedId, uint bitfield)
+        {
+            Packet dummy;
+            if (sentPackets.TryRemove(lastReceivedId, out dummy))
+                Log.Write("Packet confirmed: " + lastReceivedId);
+            foreach (var packet in sentPackets.ToArray())
+            {
+                var dif = GetSequenceDifference(packet.Key, lastReceivedId);
+                if (dif > 32) // packet lost
+                {
+                    sentPackets.TryRemove(packet.Key, out dummy);
+                    Log.Write($"Packet {packet.Value.GetType().Name} ({packet.Key}) lost, resending", ConsoleColor.Green);
+                    Send(packet.Value); // TODO implement congestion control
+                }
+                else if (dif > 0 && ((bitfield >> (dif - 1)) & 1) == 1) // packet received successfully
+                {
+                    sentPackets.TryRemove(packet.Key, out dummy);
+                    Log.Write("Packet confirmed: " + packet.Key);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns the difference between two sequence id's
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <returns></returns>
+        private int GetSequenceDifference(ushort from, ushort to)
+        {
+            if (to == from) return 0;
+
+            int highDif;
+            if (to < from)
+                highDif = to + (ushort.MaxValue - from);
+            else
+                highDif = to - from;
+
+            if (highDif > ushort.MaxValue / 2)
+            {
+                int lowDif;
+                if (from < to)
+                    lowDif = from + (ushort.MaxValue - to) + 1;
+                else
+                    lowDif = from - from;
+                return -lowDif;
+            }
+            else
+                return highDif;
+        }
+
+        /// <summary>
+        /// Reads a packet header from a given BitReader
+        /// </summary>
+        /// <param name="r"></param>
+        /// <returns></returns>
+        private PacketHeader ReadHeader(BitReader r)
+        {
+            return new PacketHeader(r);
         }
 
         /// <summary>
@@ -368,6 +618,9 @@ namespace Utils.NET.Net.Udp
                     break;
                 case UdpPacketType.Connected:
                     HandleConnected((UdpConnected)packet);
+                    break;
+                case UdpPacketType.Disconnect:
+                    HandleDisconnect((UdpDisconnect)packet);
                     break;
             }
         }
@@ -392,11 +645,21 @@ namespace Utils.NET.Net.Udp
         /// <param name="connected"></param>
         private void HandleConnected(UdpConnected connected)
         {
-            if (connected.salt != salt) return; // salt mismatch, could be spoofed sender
+            if (connected.salt != salt) // salt mismatch, could be spoofed sender
+            {
+                Log.Write("UdpClient, invalid salt received in solution packet");
+                return;
+            }
             if (!SetConnectionState(ConnectionState.Connected, ConnectionState.AwaitingConnected)) return;
             remoteEndPoint = new IPEndPoint(((IPEndPoint)remoteEndPoint).Address, connected.port);
             retryCount = 0;
-            HandleConnected(true);
+            HandleConnected(ConnectStatus.Success);
+        }
+
+        private void HandleDisconnect(UdpDisconnect disconnect)
+        {
+            Disconnect(false);
+            Log.Error("Server disconnected client: " + disconnect.ReasonString);
         }
 
         #endregion
@@ -407,7 +670,7 @@ namespace Utils.NET.Net.Udp
         /// Sends a given packet
         /// </summary>
         /// <param name="packet">Packet.</param>
-        public void Send(TPacket packet)
+        public void Send(Packet packet)
         {
             Send(new UdpSendData(packet, false));
         }
@@ -441,11 +704,12 @@ namespace Utils.NET.Net.Udp
         }
 
         /// <summary>
-        /// Sends a packet to the remote 
+        /// Sends a packet to the remote
         /// </summary>
         /// <param name="packet">Packet.</param>
         private void SendPacket(UdpSendData packet)
         {
+            Log.Write("Sending: " + packet.packet.GetType().Name);
             lastSent = DateTime.Now;
             var package = PackagePacket(packet);
             socket.BeginSendTo(package.data, 0, package.size, SocketFlags.None, remoteEndPoint, OnSend, null);
@@ -482,8 +746,42 @@ namespace Utils.NET.Net.Udp
         {
             var w = new BitWriter();
             w.Write(data.udp);
+            if (!data.udp)
+            {
+                w.Write(salt);
+                ushort seq = WriteHeader(w);
+                Log.Write("Sending seq id: " + seq);
+                sentPackets[seq] = data.packet;
+            }
             data.packet.WritePacket(w);
             return w.GetData();
+        }
+
+        /// <summary>
+        /// Writes the Udp packet header
+        /// </summary>
+        private ushort WriteHeader(BitWriter w)
+        {
+            ushort seq = ++nextSequenceId;
+            w.Write(seq);
+            GetReceivedInfo(out ushort latest, out uint bitfield);
+            w.Write(latest);
+            w.Write(bitfield);
+            return seq;
+        }
+
+        /// <summary>
+        /// Gets the received information atmoically
+        /// </summary>
+        /// <param name="latest"></param>
+        /// <param name="bitfield"></param>
+        private void GetReceivedInfo(out ushort latest, out uint bitfield)
+        {
+            lock (sequenceLock)
+            {
+                latest = lastReceivedSequenceId;
+                bitfield = receivedBitfield;
+            }
         }
 
         #endregion

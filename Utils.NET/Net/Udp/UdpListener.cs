@@ -5,11 +5,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Utils.NET.IO;
+using Utils.NET.Logging;
 using Utils.NET.Net.Udp.Packets;
 
 namespace Utils.NET.Net.Udp
 {
-    public class UdpListener<TCon, TPacket> 
+    public abstract class UdpListener<TCon, TPacket> 
         where TPacket : Packet 
         where TCon : UdpClient<TPacket>
     {
@@ -104,7 +105,7 @@ namespace Utils.NET.Net.Udp
 
         #region Init
 
-        public UdpListener(ushort port, int maxClients)
+        public UdpListener(int port, int maxClients)
         {
             this.port = port;
             InitPorts(maxClients);
@@ -184,7 +185,17 @@ namespace Utils.NET.Net.Udp
             var ipEndpoint = (IPEndPoint)endpoint;
             var address = ipEndpoint.Address;
 
-            if (connections.TryGetValue(address, out var connection)) return;
+            if (availablePorts.Count == 0) // no available ports
+            {
+                Send(new UdpDisconnect(connect.clientSalt, UdpDisconnectReason.ServerFull), endpoint);
+                return;
+            }
+
+            if (connections.TryGetValue(address, out var connection))
+            {
+                Send(new UdpDisconnect(connect.clientSalt, UdpDisconnectReason.ExistingConnection), endpoint);
+                return;
+            }
 
             var state = CreateConnectionRequest(connect.clientSalt, address);
             requestStates[address] = state;
@@ -201,15 +212,64 @@ namespace Utils.NET.Net.Udp
             var ipEndpoint = (IPEndPoint)endpoint;
             var address = ipEndpoint.Address;
 
-            if (!requestStates.TryGetValue(address, out var state)) return;
+            if (connections.TryGetValue(address, out var oldcon))
+            {
+                if (oldcon.salt != solution.salt)
+                {
+                    Log.Write("New connection failed: already an existing connection");
+                    return;
+                }
+
+                Send(new UdpConnected(oldcon.salt, (ushort)oldcon.LocalPort), endpoint);
+                return;
+            }
+
+            if (!requestStates.TryGetValue(address, out var state))
+            {
+                Log.Write("New connection failed: no request state found");
+                return;
+            }
 
             var saltSolution = Udp.CreateSalt(state.clientSalt, state.serverSalt);
-            if (solution.salt != saltSolution) return;
+            if (solution.salt != saltSolution)
+            {
+                Log.Write("New connection failed: salt solution invalid");
+                return;
+            }
 
-            requestStates.TryRemove(address, out state);
+            if (!requestStates.TryRemove(address, out state))
+            {
+                Log.Write("New connection failed: no request state to remove");
+                return;
+            }
 
-            // TODO get and assign client to a port
+            if (!availablePorts.TryDequeue(out int port))
+            {
+                Log.Write("New connection failed: failed to assign port");
+                return;
+            }
+
+            var connection = (TCon)Activator.CreateInstance(typeof(TCon));
+
+            if (!connections.TryAdd(address, connection))
+            {
+                connection.Disconnect(true);
+                Log.Write("New connection failed: failed to add connection");
+                return;
+            }
+
+            connection.SetConnectedTo(endpoint, saltSolution, port);
+            HandleConnection(connection);
+            connection.StartRead();
+
+            Send(new UdpConnected(saltSolution, (ushort)port), endpoint);
         }
+
+        /// <summary>
+        /// Handles a new connection
+        /// </summary>
+        /// <param name="connection"></param>
+        protected abstract void HandleConnection(TCon connection);
 
         #endregion
 
@@ -230,7 +290,8 @@ namespace Utils.NET.Net.Udp
         /// </summary>
         private void BeginRead()
         {
-            socket.BeginReceiveFrom(buffer.data, 0, buffer.size, SocketFlags.None, ref receiveEndPoint, OnRead, null);
+            receiveEndPoint = new IPEndPoint(IPAddress.Any, 0);
+            socket.BeginReceiveFrom(buffer.data, 0, buffer.maxSize, SocketFlags.None, ref receiveEndPoint, OnRead, null);
         }
 
         /// <summary>
@@ -239,7 +300,7 @@ namespace Utils.NET.Net.Udp
         /// <param name="ar">Ar.</param>
         private void OnRead(IAsyncResult ar)
         {
-            EndPoint fromEndpoint = null;
+            EndPoint fromEndpoint = new IPEndPoint(IPAddress.Any, 0);
             int length = socket.EndReceiveFrom(ar, ref fromEndpoint);
 
             byte[] data = new byte[length];
@@ -252,6 +313,7 @@ namespace Utils.NET.Net.Udp
             byte id = r.ReadUInt8();
             var packet = Udp.CreateUdpPacket(id);
             if (packet == null) return; // failed to create a packet from the given id value
+            packet.ReadPacket(r);
             HandlePacket(packet, fromEndpoint);
         }
 
