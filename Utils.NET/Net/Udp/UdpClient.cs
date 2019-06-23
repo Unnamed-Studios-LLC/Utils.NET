@@ -65,7 +65,7 @@ namespace Utils.NET.Net.Udp
         /// <summary>
         /// The delay, is milliseconds, before resending a connection packet
         /// </summary>
-        private const double Connection_Retry_Delay = 500;
+        private const double Connection_Retry_Delay = 250;
 
 #if DEBUG
         /// <summary>
@@ -77,7 +77,7 @@ namespace Utils.NET.Net.Udp
         /// <summary>
         /// The amount of times to resend a connection packet before failure
         /// </summary>
-        private const int Connection_Retry_Amount = 5;
+        private const int Connection_Retry_Amount = 10;
 
         /// <summary>
         /// Underlying system socket used to send and receive data
