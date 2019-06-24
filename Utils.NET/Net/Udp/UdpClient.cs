@@ -753,6 +753,7 @@ namespace Utils.NET.Net.Udp
                 Log.Write("Sending seq id: " + seq);
                 sentPackets[seq] = data.packet;
             }
+            w.Write(data.packet.Id);
             data.packet.WritePacket(w);
             return w.GetData();
         }

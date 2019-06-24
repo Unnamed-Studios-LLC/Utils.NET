@@ -187,6 +187,7 @@ namespace Utils.NET.Net.Tcp
         {
             BitWriter w = new BitWriter();
             w.Write((int)0); // reserve size int space
+            w.Write(packet.Id);
             packet.WritePacket(w);
 
             var payload = w.GetData();

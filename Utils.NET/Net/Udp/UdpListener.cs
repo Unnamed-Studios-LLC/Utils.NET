@@ -383,6 +383,7 @@ namespace Utils.NET.Net.Udp
         {
             var w = new BitWriter();
             w.Write(true);
+            w.Write(data.packet.Id);
             data.packet.WritePacket(w);
             return w.GetData();
         }

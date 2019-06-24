@@ -12,13 +12,11 @@ namespace Utils.NET.Net
 
         public void WritePacket(BitWriter w)
         {
-            w.Write(Id);
             Write(w);
         }
 
         public void ReadPacket(BitReader r)
         {
-            //r.ReadUInt8(); // read id
             Read(r);
         }
 
