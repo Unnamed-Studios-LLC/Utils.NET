@@ -11,7 +11,14 @@ namespace Utils.NET.IO.Xml
         /// <summary>
         /// The xml node to parse
         /// </summary>
-        private XElement xml;
+        private readonly XElement xml;
+
+        public string StringValue => xml.Value;
+
+        public int IntValue => Convert.ToInt32(xml.Value);
+
+        public uint HexValue => StringUtils.ParseHex(xml.Value);
+
 
         public XmlParser(XElement xml)
         {
@@ -77,6 +84,20 @@ namespace Utils.NET.IO.Xml
         }
 
         /// <summary>
+        /// Returns the given enum representation of the element value
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="name"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        public T Enum<T>(string name, T defaultValue) where T : struct
+        {
+            if (!TryGetValue(name, out var value)) return defaultValue;
+            if (!System.Enum.TryParse(value.Value, true, out T result)) return defaultValue;
+            return result;
+        }
+
+        /// <summary>
         /// Returns true if the node exists
         /// </summary>
         /// <param name="name"></param>
@@ -132,6 +153,20 @@ namespace Utils.NET.IO.Xml
         {
             if (!TryGetAttribute(name, out var value)) return defaultValue;
             return StringUtils.ParseHex(value.Value);
+        }
+
+        /// <summary>
+        /// Returns the given enum representation of the element value
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="name"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        public T AtrEnum<T>(string name, T defaultValue) where T : struct
+        {
+            if (!TryGetAttribute(name, out var value)) return defaultValue;
+            if (!System.Enum.TryParse(value.Value, true, out T result)) return defaultValue;
+            return result;
         }
 
         /// <summary>
