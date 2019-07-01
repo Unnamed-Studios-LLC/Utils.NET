@@ -72,6 +72,18 @@ namespace Utils.NET.IO.Xml
         }
 
         /// <summary>
+        /// Returns an float representation of the node's value
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        public float Float(string name, float defaultValue = 0)
+        {
+            if (!TryGetValue(name, out var value)) return defaultValue;
+            return Convert.ToSingle(value.Value);
+        }
+
+        /// <summary>
         /// Returns the integer value of a hexadecimal string
         /// </summary>
         /// <param name="name"></param>
@@ -141,6 +153,18 @@ namespace Utils.NET.IO.Xml
         {
             if (!TryGetAttribute(name, out var value)) return defaultValue;
             return Convert.ToInt32(value.Value);
+        }
+
+        /// <summary>
+        /// Returns an float representation of the attribute's value
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        public float AtrFloat(string name, float defaultValue = 0)
+        {
+            if (!TryGetAttribute(name, out var value)) return defaultValue;
+            return Convert.ToSingle(value.Value);
         }
 
         /// <summary>
