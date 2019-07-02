@@ -8,6 +8,8 @@ namespace Utils.NET.Logging
 {
     public class Log : IDisposable
     {
+        public static Action<object> WriteMethod = Console.Write;
+
         /// <summary>
         /// Static instance used to handle static log calls
         /// </summary>
@@ -159,7 +161,7 @@ namespace Utils.NET.Logging
                     input = input.Substring(0, input.Length - 1);
                     ClearCurrentLine();
                     if (input.Length > 0)
-                        Console.Write(inputLine);
+                        WriteMethod(inputLine);
                     break;
                 case ConsoleKey.Enter:
                     ProcessInput(input);
@@ -181,7 +183,7 @@ namespace Utils.NET.Logging
         /// <param name="key"></param>
         private void WriteInputKey(char key)
         {
-            Console.Write(key);
+            WriteMethod(key);
         }
 
         /// <summary>
@@ -220,7 +222,7 @@ namespace Utils.NET.Logging
             }
 
             if (inputLine.Length > 0 && !first)
-                Console.Write(inputLine);
+                WriteMethod(inputLine);
         }
         
         /// <summary>
@@ -232,22 +234,22 @@ namespace Utils.NET.Logging
             WriteTimestamp();
             foreach (var write in entry.writes)
                 Write(write);
-            Console.Write('\n');
+            WriteMethod('\n');
             Console.ForegroundColor = ConsoleColor.White;
         }
 
         private void Write(LogWrite write)
         {
             Console.ForegroundColor = write.color;
-            Console.Write(write.text);
+            WriteMethod(write.text);
         }
 
         private void WriteTimestamp()
         {
             Console.ForegroundColor = ConsoleColor.White;
-            Console.Write('[');
-            Console.Write(DateTime.Now);
-            Console.Write("] ");
+            WriteMethod('[');
+            WriteMethod(DateTime.Now);
+            WriteMethod("] ");
         }
 
         /// <summary>
@@ -255,7 +257,7 @@ namespace Utils.NET.Logging
         /// </summary>
         private void ClearCurrentLine()
         {
-            Console.Write("\r" + new string(' ', Console.WindowWidth - 2) + "\r");
+            WriteMethod("\r" + new string(' ', Console.WindowWidth - 2) + "\r");
         }
 
         /// <summary>
