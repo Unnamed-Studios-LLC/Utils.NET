@@ -8,15 +8,22 @@ namespace Utils.NET.Net
 {
     public class PacketFactory<TPacket> where TPacket : Packet
     {
-        private Dictionary<byte, Type> packetTypes;
+        protected Dictionary<byte, Type> packetTypes;
+
+        public int TypeCount => packetTypes.Count;
 
         public PacketFactory()
         {
-            var t = typeof(TPacket);
-            packetTypes = t.Assembly.GetTypes().Where(_ => _.IsSubclassOf(t)).ToDictionary(_ => ((TPacket)Activator.CreateInstance(_)).Id);
+            packetTypes = GetPacketTypes();
         }
 
-        public TPacket CreatePacket(byte id)
+        protected virtual Dictionary<byte, Type> GetPacketTypes()
+        {
+            var t = typeof(TPacket);
+            return t.Assembly.GetTypes().Where(_ => _.IsSubclassOf(t)).ToDictionary(_ => ((TPacket)Activator.CreateInstance(_)).Id);
+        }
+
+        public virtual TPacket CreatePacket(byte id)
         {
             if (!packetTypes.TryGetValue(id, out var type))
                 return null;

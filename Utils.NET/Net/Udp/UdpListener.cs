@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using Utils.NET.IO;
 using Utils.NET.Logging;
 using Utils.NET.Net.Udp.Packets;
@@ -103,6 +104,11 @@ namespace Utils.NET.Net.Udp
         /// </summary>
         private bool sending = false;
 
+        /// <summary>
+        /// Int value used to determine if the socket is running
+        /// </summary>
+        private int running = 0;
+
         #region Init
 
         public UdpListener(int port, int maxClients)
@@ -142,17 +148,22 @@ namespace Utils.NET.Net.Udp
         /// <summary>
         /// Starts accepting new clients
         /// </summary>
-        public void Start()
+        public virtual bool Start()
         {
+            if (Interlocked.CompareExchange(ref running, 1, 0) != 0) return false; // only allow one call
             BeginRead();
+            return true;
         }
 
         /// <summary>
         /// Stops listening for new clients
         /// </summary>
-        public void Stop()
+        public virtual bool Stop()
         {
-
+            if (Interlocked.CompareExchange(ref running, 0, 1) != 1) return false; // only allow one call
+            sendQueue.Clear();
+            socket.Dispose();
+            return true;
         }
 
         #endregion
@@ -253,17 +264,23 @@ namespace Utils.NET.Net.Udp
 
             if (!connections.TryAdd(address, connection))
             {
+                availablePorts.Enqueue(port); // return port
                 connection.Disconnect(true);
                 Log.Write("New connection failed: failed to add connection");
                 return;
             }
 
             connection.SetConnectedTo(endpoint, saltSolution, port);
+            connection.OnDisconnect += ClientDisconnected;
             HandleConnection(connection);
             connection.StartRead();
 
             Send(new UdpConnected(saltSolution, (ushort)port), endpoint);
         }
+
+        #endregion
+
+        #region Connecion Methods
 
         /// <summary>
         /// Handles a new connection
@@ -271,15 +288,28 @@ namespace Utils.NET.Net.Udp
         /// <param name="connection"></param>
         protected abstract void HandleConnection(TCon connection);
 
-        #endregion
-
-        #region Connecion Methods
-
         private ConnectRequestState CreateConnectionRequest(ulong clientSalt, IPAddress address)
         {
             ulong serverSalt = Udp.GenerateLocalSalt();
             return new ConnectRequestState(clientSalt, serverSalt, address);
         }
+
+        /// <summary>
+        /// Method called when a given client has been disconnected
+        /// </summary>
+        /// <param name="connection"></param>
+        private void ClientDisconnected(UdpClient<TPacket> client)
+        {
+            if (!connections.TryRemove(client.RemoteAddress, out var connection)) return;
+            HandleDisconnection(connection);
+            availablePorts.Enqueue(connection.LocalPort);
+        }
+
+        /// <summary>
+        /// Handles a connection disconnecting
+        /// </summary>
+        /// <param name="connection"></param>
+        protected abstract void HandleDisconnection(TCon connection);
 
         #endregion
 
@@ -328,6 +358,7 @@ namespace Utils.NET.Net.Udp
         /// <param name="endpoint">Endpoint.</param>
         private void Send(UdpPacket packet, EndPoint endpoint)
         {
+            if (running == 0) return; // return if not running
             var data = new SendData(packet, endpoint);
             lock (sendQueue)
             {
