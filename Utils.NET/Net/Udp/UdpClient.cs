@@ -199,6 +199,7 @@ namespace Utils.NET.Net.Udp
             this.salt = salt;
             remoteEndPoint = endpoint;
             SetConnectionState(ConnectionState.Connected);
+            HandleConnected(ConnectStatus.Success);
             socket.Bind(new IPEndPoint(IPAddress.Any, localPort));
             timer.Start();
         }
@@ -268,7 +269,6 @@ namespace Utils.NET.Net.Udp
             switch (s)
             {
                 case ConnectionState.Connected:
-                    return;
                     if ((DateTime.Now - lastReceived).TotalSeconds > 5)
                     {
                         Disconnect();
