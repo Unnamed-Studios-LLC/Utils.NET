@@ -36,7 +36,7 @@ namespace Utils.NET.Net.Udp.Reliability
         /// <summary>
         /// Sets the action used to send packets
         /// </summary>
-        /// <param name="doReceivePacket"></param>
+        /// <param name="doWriteUdpHeader"></param>
         public virtual void SetWriteUdpHeader(Action<BitWriter, UdpSendData> doWriteUdpHeader)
         {
             this.doWriteUdpHeader = doWriteUdpHeader;
@@ -45,7 +45,7 @@ namespace Utils.NET.Net.Udp.Reliability
         /// <summary>
         /// Sets the action used to send packets
         /// </summary>
-        /// <param name="doReceivePacket"></param>
+        /// <param name="doSendPacket"></param>
         public virtual void SetSendAction(Action<IO.Buffer> doSendPacket)
         {
             this.doSendPacket = doSendPacket;

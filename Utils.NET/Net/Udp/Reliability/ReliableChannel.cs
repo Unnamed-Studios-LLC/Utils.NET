@@ -99,7 +99,7 @@ namespace Utils.NET.Net.Udp.Reliability
         /// <param name="header"></param>
         protected bool HandlePacketHeader(PacketHeader header)
         {
-            Log.Write("Received seq id: " + header.sequenceId);
+            //Log.Write("Received seq id: " + header.sequenceId);
             HandleReceivedBitfield(header.lastReceivedId, header.receivedBitfield);
             return HandleSequenceId(header.sequenceId);
         }
@@ -161,7 +161,9 @@ namespace Utils.NET.Net.Udp.Reliability
         {
             TPacket dummy;
             if (sentPackets.TryRemove(lastReceivedId, out dummy))
-                Log.Write("Packet confirmed: " + lastReceivedId);
+            {
+                //Log.Write("Packet confirmed: " + lastReceivedId);
+            }
             foreach (var packet in sentPackets.ToArray())
             {
                 var dif = GetSequenceDifference(packet.Key, lastReceivedId);
@@ -174,7 +176,7 @@ namespace Utils.NET.Net.Udp.Reliability
                 else if (dif > 0 && ((bitfield >> (dif - 1)) & 1) == 1) // packet received successfully
                 {
                     sentPackets.TryRemove(packet.Key, out dummy);
-                    Log.Write("Packet confirmed: " + packet.Key);
+                    //Log.Write("Packet confirmed: " + packet.Key);
                 }
             }
         }
@@ -191,7 +193,7 @@ namespace Utils.NET.Net.Udp.Reliability
 
             int highDif;
             if (to < from)
-                highDif = to + (ushort.MaxValue - from);
+                highDif = to + (ushort.MaxValue - from + 1);
             else
                 highDif = to - from;
 
@@ -199,7 +201,7 @@ namespace Utils.NET.Net.Udp.Reliability
             {
                 int lowDif;
                 if (from < to)
-                    lowDif = from + (ushort.MaxValue - to) + 1;
+                    lowDif = from + (ushort.MaxValue - to + 1);
                 else
                     lowDif = from - from;
                 return -lowDif;
@@ -224,7 +226,7 @@ namespace Utils.NET.Net.Udp.Reliability
         {
             ushort seq = WriteHeader(w);
             packet.WritePacket(w);
-            Log.Write("Sending seq id: " + seq);
+            //Log.Write("Sending seq id: " + seq);
             sentPackets[seq] = packet;
             doSendPacket(w.GetData());
         }

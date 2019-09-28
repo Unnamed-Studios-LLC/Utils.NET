@@ -216,6 +216,39 @@ namespace Utils.NET.Net.Udp
         }
 
         /// <summary>
+        /// Creates an unreliable packet channel
+        /// </summary>
+        /// <returns></returns>
+        public UnreliableChannel<TPacket> CreateUnreliableChannel()
+        {
+            var channel = new UnreliableChannel<TPacket>();
+            ConfigurePacketChannel(channel);
+            return channel;
+        }
+
+        /// <summary>
+        /// Creates a reliable packet channel
+        /// </summary>
+        /// <returns></returns>
+        public ReliableChannel<TPacket> CreateReliableChannel()
+        {
+            var channel = new ReliableChannel<TPacket>();
+            ConfigurePacketChannel(channel);
+            return channel;
+        }
+
+        /// <summary>
+        /// Creates an ordered reliable packet channel
+        /// </summary>
+        /// <returns></returns>
+        public OrderedReliableChannel<TPacket> CreateOrderedReliableChannel()
+        {
+            var channel = new OrderedReliableChannel<TPacket>();
+            ConfigurePacketChannel(channel);
+            return channel;
+        }
+
+        /// <summary>
         /// Sets a packet channel to a given id
         /// </summary>
         /// <param name="id"></param>
@@ -607,7 +640,7 @@ namespace Utils.NET.Net.Udp
         /// <param name="packet">Packet.</param>
         private void SendPacket(UdpSendData data)
         {
-            Log.Write("Sending: " + data.packet.GetType().Name);
+            //Log.Write("Sending: " + data.packet.GetType().Name);
             lastSent = DateTime.Now;
 
             var w = new BitWriter();

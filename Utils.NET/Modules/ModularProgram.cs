@@ -44,9 +44,8 @@ namespace Utils.NET.Modules
             lock (Modules)
             {
                 Modules.Add(module);
-                module.Start();
-
                 Log.Write("Starting Module: " + module.Name);
+                module.Start();
             }
         }
 
@@ -60,7 +59,7 @@ namespace Utils.NET.Modules
 
             foreach (var file in Directory.EnumerateFiles(path))
             {
-                if (!file.EndsWith(".dll")) continue; // only load dlls
+                if (!file.EndsWith(".dll", StringComparison.Ordinal)) continue; // only load dlls
                 LoadModuleDll(file);
             }
         }
@@ -89,7 +88,10 @@ namespace Utils.NET.Modules
             {
                 for (int i = 0; i < Modules.Count; i++)
                 {
-                    Modules[i].Stop();
+                    var module = Modules[i];
+
+                    Log.Write("Stopping Module: " + module.Name);
+                    module.Stop();
                 }
             }
         }
