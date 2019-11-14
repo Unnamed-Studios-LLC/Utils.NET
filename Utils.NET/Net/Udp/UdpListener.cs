@@ -331,7 +331,15 @@ namespace Utils.NET.Net.Udp
         private void OnRead(IAsyncResult ar)
         {
             EndPoint fromEndpoint = new IPEndPoint(IPAddress.Any, 0);
-            int length = socket.EndReceiveFrom(ar, ref fromEndpoint);
+            int length = 0;
+            try
+            {
+                length = socket.EndReceiveFrom(ar, ref fromEndpoint);
+            }
+            catch (ObjectDisposedException disposedEx)
+            {
+                return;
+            }
 
             byte[] data = new byte[length];
             System.Buffer.BlockCopy(buffer.data, 0, data, 0, length);
