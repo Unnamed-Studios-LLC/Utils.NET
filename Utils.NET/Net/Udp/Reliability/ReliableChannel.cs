@@ -226,7 +226,6 @@ namespace Utils.NET.Net.Udp.Reliability
         {
             ushort seq = WriteHeader(w);
             packet.WritePacket(w);
-            //Log.Write("Sending seq id: " + seq);
             sentPackets[seq] = packet;
             doSendPacket(w.GetData());
         }

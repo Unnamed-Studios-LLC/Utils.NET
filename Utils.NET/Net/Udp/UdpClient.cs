@@ -201,6 +201,7 @@ namespace Utils.NET.Net.Udp
             SetConnectionState(ConnectionState.Connected);
             socket.Bind(new IPEndPoint(IPAddress.Any, localPort));
             timer.Start();
+            HandleConnected(ConnectStatus.Success);
         }
 
         /// <summary>
@@ -463,6 +464,8 @@ namespace Utils.NET.Net.Udp
         {
             try
             {
+                //var ip = (IPEndPoint)remoteEndPoint;
+                //Log.Write("Receiving from: " + ip.Address + ":" + ip.Port + " At port: " + LocalPort);
                 socket.BeginReceiveFrom(buffer.data, 0, Max_Packet_Size, SocketFlags.None, ref remoteEndPoint, OnRead, state);
             }
             catch (ObjectDisposedException disposedEx)
@@ -493,40 +496,49 @@ namespace Utils.NET.Net.Udp
 
             try
             {
-                BitReader r = new BitReader(buffer.data, length);
-                bool isUdp = r.ReadBool();
-                byte id;
-                if (isUdp)
-                {
-                    id = r.ReadUInt8();
-                    var udpPacket = Udp.CreateUdpPacket(id);
-                    if (udpPacket == null) return;
-                    udpPacket.ReadPacket(r);
-                    HandleUdpPacket(udpPacket);
-                    return;
-                }
-
-                ulong receivedSalt = r.ReadUInt64();
-                if (receivedSalt != salt) return; // salt mismatch, TODO disconnect
-
-#if DEBUG
-                if (Rand.Next(10000) / 100.0 < Simulate_Packet_Loss_Percent)
-                {
-                    Log.Error("Stopped packet: " + r.ReadUInt16());
-                    return;
-                }
-#endif
-                lastReceived = DateTime.Now;
-
-                id = r.ReadUInt8(); // read packet type
-                var channel = channels[id]; // get channel for packet type
-
-                channel.ReceivePacket(r, id);
+                ReceivedData(buffer.data, length);
             }
             finally
             {
                 BeginRead();
             }
+        }
+
+        /// <summary>
+        /// Packet data received
+        /// </summary>
+        /// <param name="length"></param>
+        protected void ReceivedData(byte[] data, int length)
+        {
+            BitReader r = new BitReader(data, length);
+            bool isUdp = r.ReadBool();
+            byte id;
+            if (isUdp)
+            {
+                id = r.ReadUInt8();
+                var udpPacket = Udp.CreateUdpPacket(id);
+                if (udpPacket == null) return;
+                udpPacket.ReadPacket(r);
+                HandleUdpPacket(udpPacket);
+                return;
+            }
+
+            ulong receivedSalt = r.ReadUInt64();
+            if (receivedSalt != salt) return; // salt mismatch, TODO disconnect
+
+#if DEBUG
+            if (Rand.Next(10000) / 100.0 < Simulate_Packet_Loss_Percent)
+            {
+                Log.Error("Stopped packet: " + r.ReadUInt16());
+                return;
+            }
+#endif
+            lastReceived = DateTime.Now;
+
+            id = r.ReadUInt8(); // read packet type
+            var channel = channels[id]; // get channel for packet type
+
+            channel.ReceivePacket(r, id);
         }
 
         /// <summary>
@@ -678,6 +690,8 @@ namespace Utils.NET.Net.Udp
 
         private void DoSendData(IO.Buffer package)
         {
+            //var ip = (IPEndPoint)remoteEndPoint;
+            //Log.Write("Sending to: " + ip.Address + ":" + ip.Port + " From port: " + LocalPort);
             socket.BeginSendTo(package.data, 0, package.size, SocketFlags.None, remoteEndPoint, OnSend, null);
         }
 
