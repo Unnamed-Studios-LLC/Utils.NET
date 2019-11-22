@@ -468,7 +468,7 @@ namespace Utils.NET.Net.Udp
                 //Log.Write("Receiving from: " + ip.Address + ":" + ip.Port + " At port: " + LocalPort);
                 socket.BeginReceiveFrom(buffer.data, 0, Max_Packet_Size, SocketFlags.None, ref remoteEndPoint, OnRead, state);
             }
-            catch (ObjectDisposedException disposedEx)
+            catch (ObjectDisposedException)
             {
                 Disconnect();
                 return;
@@ -692,7 +692,15 @@ namespace Utils.NET.Net.Udp
         {
             //var ip = (IPEndPoint)remoteEndPoint;
             //Log.Write("Sending to: " + ip.Address + ":" + ip.Port + " From port: " + LocalPort);
-            socket.BeginSendTo(package.data, 0, package.size, SocketFlags.None, remoteEndPoint, OnSend, null);
+            try
+            {
+                socket.BeginSendTo(package.data, 0, package.size, SocketFlags.None, remoteEndPoint, OnSend, null);
+            }
+            catch (ObjectDisposedException)
+            {
+                Disconnect();
+                return;
+            }
         }
 
         /// <summary>
