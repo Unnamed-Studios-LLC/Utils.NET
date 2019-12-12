@@ -56,5 +56,7 @@ namespace Utils.NET.Geometry
 
         public static implicit operator Vec2(Int2 vec) => new Vec2(vec.x, vec.y);
         public static implicit operator Vec2(float value) => new Vec2(value, value);
+
+        public override string ToString() => $"{{{x}, {y}}}";
     }
 }

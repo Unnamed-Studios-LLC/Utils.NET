@@ -6,6 +6,35 @@ namespace Utils.NET.Geometry
 {
     public struct Rect
     {
+        public static Rect FromBounds(IEnumerable<Vec2> bounds)
+        {
+            Vec2 min = new Vec2();
+            Vec2 max = new Vec2();
+
+            bool first = true;
+            foreach (var bound in bounds)
+            {
+                if (first)
+                {
+                    min = max = bound;
+                    first = false;
+                }
+                else
+                {
+                    if (bound.x < min.x)
+                        min.x = bound.x;
+                    if (bound.x > max.x)
+                        max.x = bound.x;
+                    if (bound.y < min.y)
+                        min.y = bound.y;
+                    if (bound.y > max.y)
+                        max.y = bound.y;
+                }
+            }
+
+            return new Rect(min.x, min.y, max.x - min.x, max.y - min.y);
+        }
+
         public float x;
 
         public float y;
@@ -34,5 +63,12 @@ namespace Utils.NET.Geometry
             width = size.x;
             height = size.y;
         }
+
+        public IntRect GetBoundingRect()
+        {
+            return new IntRect((int)Math.Floor(x), (int)Math.Floor(y), (int)Math.Ceiling(x + width), (int)Math.Ceiling(y + height));
+        }
+
+        public override string ToString() => $"{{ {x}, {y}, {width}, {height} }}";
     }
 }

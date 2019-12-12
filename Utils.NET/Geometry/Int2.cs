@@ -19,6 +19,8 @@ namespace Utils.NET.Geometry
             this.y = y;
         }
 
+        public Int2 Clamp(Int2 low, Int2 high) => new Int2(x < low.x ? low.x : (x > high.x ? high.x : x), y < low.y ? low.y : (y > high.y ? high.y : y));
+
         public Int2 Add(Int2 vec) => new Int2(x + vec.x, y + vec.y);
         public Int2 Subtract(Int2 vec) => new Int2(x - vec.x, y - vec.y);
         public Int2 Multiply(Int2 vec) => new Int2(x * vec.x, y * vec.y);
