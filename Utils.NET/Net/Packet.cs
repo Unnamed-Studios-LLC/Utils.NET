@@ -6,6 +6,12 @@ using Utils.NET.Logging;
 
 namespace Utils.NET.Net
 {
+    public class LengthCheckFailedException : Exception
+    {
+        public LengthCheckFailedException() : base() { }
+        public LengthCheckFailedException(string message) : base(message) { }
+    }
+
     public abstract class Packet
     {
         public abstract byte Id { get; }
