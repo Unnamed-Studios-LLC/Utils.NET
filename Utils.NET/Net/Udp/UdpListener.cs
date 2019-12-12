@@ -30,13 +30,13 @@ namespace Utils.NET.Net.Udp
             /// <summary>
             /// The ip address of the request
             /// </summary>
-            public IPAddress address;
+            public IPEndPoint ipEndpoint;
 
-            public ConnectRequestState(ulong clientSalt, ulong serverSalt, IPAddress address)
+            public ConnectRequestState(ulong clientSalt, ulong serverSalt, IPEndPoint ipEndpoint)
             {
                 this.clientSalt = clientSalt;
                 this.serverSalt = serverSalt;
-                this.address = address;
+                this.ipEndpoint = ipEndpoint;
             }
         }
 
@@ -87,12 +87,12 @@ namespace Utils.NET.Net.Udp
         /// <summary>
         /// Dictionary containing the states of pending connections
         /// </summary>
-        private readonly ConcurrentDictionary<IPAddress, ConnectRequestState> requestStates = new ConcurrentDictionary<IPAddress, ConnectRequestState>();
+        private readonly ConcurrentDictionary<IPEndPoint, ConnectRequestState> requestStates = new ConcurrentDictionary<IPEndPoint, ConnectRequestState>();
 
         /// <summary>
         /// Dictionary containing all current connections
         /// </summary>
-        private readonly ConcurrentDictionary<IPAddress, TCon> connections = new ConcurrentDictionary<IPAddress, TCon>();
+        private readonly ConcurrentDictionary<IPEndPoint, TCon> connections = new ConcurrentDictionary<IPEndPoint, TCon>();
 
         /// <summary>
         /// Queue of data ready to be sent
@@ -194,7 +194,7 @@ namespace Utils.NET.Net.Udp
         private void HandleConnect(UdpConnect connect, EndPoint endpoint)
         {
             var ipEndpoint = (IPEndPoint)endpoint;
-            var address = ipEndpoint.Address;
+            //var address = ipEndpoint.Address;
 
             if (availablePorts.Count == 0) // no available ports
             {
@@ -202,14 +202,16 @@ namespace Utils.NET.Net.Udp
                 return;
             }
 
-            if (connections.TryGetValue(address, out var connection))
+            if (connections.TryGetValue(ipEndpoint, out var connection))
             {
                 Send(new UdpDisconnect(connect.clientSalt, UdpDisconnectReason.ExistingConnection), endpoint);
                 return;
             }
 
-            var state = CreateConnectionRequest(connect.clientSalt, address);
-            requestStates[address] = state;
+            var state = CreateConnectionRequest(connect.clientSalt, ipEndpoint);
+            requestStates[ipEndpoint] = state;
+
+            var saltSolution = Udp.CreateSalt(state.clientSalt, state.serverSalt);
 
             Send(new UdpChallenge(state.clientSalt, state.serverSalt), endpoint);
         }
@@ -223,7 +225,7 @@ namespace Utils.NET.Net.Udp
             var ipEndpoint = (IPEndPoint)endpoint;
             var address = ipEndpoint.Address;
 
-            if (connections.TryGetValue(address, out var oldcon))
+            if (connections.TryGetValue(ipEndpoint, out var oldcon))
             {
                 if (oldcon.salt != solution.salt)
                 {
@@ -235,7 +237,7 @@ namespace Utils.NET.Net.Udp
                 return;
             }
 
-            if (!requestStates.TryGetValue(address, out var state))
+            if (!requestStates.TryGetValue(ipEndpoint, out var state))
             {
                 Log.Write("New connection failed: no request state found");
                 return;
@@ -248,7 +250,7 @@ namespace Utils.NET.Net.Udp
                 return;
             }
 
-            if (!requestStates.TryRemove(address, out state))
+            if (!requestStates.TryRemove(ipEndpoint, out state))
             {
                 Log.Write("New connection failed: no request state to remove");
                 return;
@@ -262,7 +264,7 @@ namespace Utils.NET.Net.Udp
 
             var connection = (TCon)Activator.CreateInstance(typeof(TCon));
 
-            if (!connections.TryAdd(address, connection))
+            if (!connections.TryAdd(ipEndpoint, connection))
             {
                 availablePorts.Enqueue(port); // return port
                 connection.Disconnect(true);
@@ -288,10 +290,10 @@ namespace Utils.NET.Net.Udp
         /// <param name="connection"></param>
         protected abstract void HandleConnection(TCon connection);
 
-        private ConnectRequestState CreateConnectionRequest(ulong clientSalt, IPAddress address)
+        private ConnectRequestState CreateConnectionRequest(ulong clientSalt, IPEndPoint ipEndpoint)
         {
             ulong serverSalt = Udp.GenerateLocalSalt();
-            return new ConnectRequestState(clientSalt, serverSalt, address);
+            return new ConnectRequestState(clientSalt, serverSalt, ipEndpoint);
         }
 
         /// <summary>
@@ -300,7 +302,7 @@ namespace Utils.NET.Net.Udp
         /// <param name="connection"></param>
         private void ClientDisconnected(UdpClient<TPacket> client)
         {
-            if (!connections.TryRemove(client.RemoteAddress, out var connection)) return;
+            if (!connections.TryRemove(client.RemoteEndPoint, out var connection)) return;
             HandleDisconnection(connection);
             availablePorts.Enqueue(connection.LocalPort);
         }
@@ -336,7 +338,7 @@ namespace Utils.NET.Net.Udp
             {
                 length = socket.EndReceiveFrom(ar, ref fromEndpoint);
             }
-            catch (ObjectDisposedException disposedEx)
+            catch (ObjectDisposedException)
             {
                 return;
             }
