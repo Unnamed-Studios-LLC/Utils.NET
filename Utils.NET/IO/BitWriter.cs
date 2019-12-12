@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils.NET.Geometry;
 using Utils.NET.Logging;
 
 namespace Utils.NET.IO
@@ -177,6 +178,12 @@ namespace Utils.NET.IO
         {
             for (int i = 0; i < bytes.Length; i++)
                 Write(bytes[i]);
+        }
+
+        public void Write(Vec2 vector)
+        {
+            Write(vector.x);
+            Write(vector.y);
         }
 
         public void LogData()

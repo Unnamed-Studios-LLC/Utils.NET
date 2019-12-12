@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils.NET.Geometry;
 using Utils.NET.Logging;
+using Utils.NET.Net;
 
 namespace Utils.NET.IO
 {
@@ -125,9 +127,11 @@ namespace Utils.NET.IO
 
         public DateTime ReadDateTime() => DateTime.SpecifyKind(new DateTime(ReadInt64()), DateTimeKind.Utc).ToLocalTime();
 
-        public string ReadUTF()
+        public string ReadUTF(int maxSize)
         {
             var length = ReadUInt16();
+            if (length > maxSize)
+                throw new LengthCheckFailedException("Size of string received is larger than the expected length");
             byte[] bytes = ReadBytes(length);
             return Encoding.UTF8.GetString(bytes, 0, length);
         }
@@ -138,6 +142,11 @@ namespace Utils.NET.IO
             for (int i = 0; i < length; i++)
                 bytes[i] = ReadUInt8();
             return bytes;
+        }
+
+        public Vec2 ReadVec2()
+        {
+            return new Vec2(ReadFloat(), ReadFloat());
         }
 
         public void LogData()
