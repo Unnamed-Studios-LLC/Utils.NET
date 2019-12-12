@@ -40,7 +40,7 @@ namespace Utils.NET.Net.Udp
         private const int Max_Packet_Size = 512;
 
         /// <summary>
-        /// The delay, is milliseconds, before resending a connection packet
+        /// The delay, in milliseconds, before resending a connection packet
         /// </summary>
         private const double Connection_Retry_Delay = 250;
 
@@ -151,6 +151,11 @@ namespace Utils.NET.Net.Udp
         /// The remote address this client sends to and received from
         /// </summary>
         public IPAddress RemoteAddress => ((IPEndPoint)remoteEndPoint).Address;
+
+        /// <summary>
+        /// The remote endpoint this client is connected to
+        /// </summary>
+        public IPEndPoint RemoteEndPoint => (IPEndPoint)remoteEndPoint;
 
         /// <summary>
         /// Event called when this client disconnects
@@ -276,6 +281,7 @@ namespace Utils.NET.Net.Udp
                     }
                     break;
                 case ConnectionState.AwaitingChallenge:
+                    if ((lastSent - DateTime.Now).TotalMilliseconds < Connection_Retry_Delay) break;
                     if (CheckResend())
                     {
                         SendConnect();
@@ -286,6 +292,7 @@ namespace Utils.NET.Net.Udp
                     }
                     break;
                 case ConnectionState.AwaitingConnected:
+                    if ((lastSent - DateTime.Now).TotalMilliseconds < Connection_Retry_Delay) break;
                     if (CheckResend())
                     {
                         SendSolution();
@@ -486,7 +493,12 @@ namespace Utils.NET.Net.Udp
             {
                 length = socket.EndReceiveFrom(ar, ref remoteEndPoint);
             }
-            catch (ObjectDisposedException disposedEx)
+            catch (SocketException)
+            {
+                Disconnect();
+                return;
+            }
+            catch (ObjectDisposedException)
             {
                 Disconnect();
                 return;
