@@ -49,7 +49,7 @@ namespace Utils.NET.Net.Udp.Packets
             salt = r.ReadUInt64();
             reason = (UdpDisconnectReason)r.Read(4);
             if (reason == UdpDisconnectReason.Custom)
-                message = r.ReadUTF();
+                message = r.ReadUTF(256);
         }
 
         protected override void Write(BitWriter w)
