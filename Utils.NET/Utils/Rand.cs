@@ -75,5 +75,22 @@ namespace Utils.NET.Utils
         }
 
         #endregion
+
+        #region Misc
+
+        public static byte[] Bytes(int length)
+        {
+            var bytes = new byte[length];
+            random.NextBytes(bytes);
+            return bytes;
+        }
+
+        public static string Base64(int byteLength)
+        {
+            var bytes = Bytes(byteLength);
+            return Convert.ToBase64String(bytes);
+        }
+
+        #endregion
     }
 }
