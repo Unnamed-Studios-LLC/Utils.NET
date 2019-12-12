@@ -12,12 +12,15 @@ namespace Utils.NET.Net
         where TCon : NetConnection<TPacket>
         where THandler : IPacketHandler<TCon, TPacket>
     {
-        private Dictionary<byte, IPacketHandler<TCon, TPacket>> handlerTypes;
+        private IPacketHandler<TCon, TPacket>[] handlerTypes;
 
         public PacketHandlerFactory()
         {
-            var handler = typeof(THandler).GetGenericTypeDefinition();
-            handlerTypes = handler.Assembly.GetTypes().Where(_ => IsPacketHandler(_, handler)).Select(_ => (IPacketHandler<TCon, TPacket>)Activator.CreateInstance(_)).ToDictionary(_ => _.Id);
+            var handlerType = typeof(THandler).GetGenericTypeDefinition();
+            var handlers = handlerType.Assembly.GetTypes().Where(_ => IsPacketHandler(_, handlerType)).Select(_ => (IPacketHandler<TCon, TPacket>)Activator.CreateInstance(_));
+            handlerTypes = new IPacketHandler<TCon, TPacket>[256];
+            foreach (var handler in handlers)
+                handlerTypes[handler.Id] = handler;
         }
 
         private bool IsPacketHandler(Type sub, Type baseClass)
@@ -29,7 +32,8 @@ namespace Utils.NET.Net
 
         public void Handle(TPacket packet, TCon connection)
         {
-            if (!handlerTypes.TryGetValue(packet.Id, out var handler)) return;
+            var handler = handlerTypes[packet.Id];
+            if (handler == null) return;
             handler.Handle(packet, connection);
         }
     }
