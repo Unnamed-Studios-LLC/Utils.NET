@@ -10,6 +10,7 @@ namespace Utils.NET.Net.Udp
         Custom,
         ServerFull,
         ExistingConnection,
-        ClientDisconnect
+        ClientDisconnect,
+        Timeout
     }
 }

@@ -267,7 +267,7 @@ namespace Utils.NET.Net.Udp
             if (!connections.TryAdd(ipEndpoint, connection))
             {
                 availablePorts.Enqueue(port); // return port
-                connection.Disconnect(true);
+                connection.Disconnect(UdpDisconnectReason.Unknown);
                 Log.Write("New connection failed: failed to add connection");
                 return;
             }

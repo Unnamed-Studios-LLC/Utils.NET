@@ -31,6 +31,13 @@ namespace Utils.NET.Net.Udp.Packets
 
         public UdpDisconnect() { }
 
+        public UdpDisconnect(ulong salt, UdpDisconnectReason reason, string message)
+        {
+            this.salt = salt;
+            this.reason = reason;
+            this.message = message;
+        }
+
         public UdpDisconnect(ulong salt, UdpDisconnectReason reason)
         {
             this.salt = salt;

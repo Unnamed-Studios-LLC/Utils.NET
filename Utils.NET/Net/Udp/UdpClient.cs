@@ -277,7 +277,7 @@ namespace Utils.NET.Net.Udp
                 case ConnectionState.Connected:
                     if ((DateTime.Now - lastReceived).TotalSeconds > 5)
                     {
-                        Disconnect();
+                        Disconnect(UdpDisconnectReason.Timeout);
                     }
                     break;
                 case ConnectionState.AwaitingChallenge:
@@ -404,7 +404,7 @@ namespace Utils.NET.Net.Udp
         /// Disconnect client from the virtual connection
         /// </summary>
         /// <returns>The disconnect.</returns>
-        public bool Disconnect(bool initiate = true)
+        public bool Disconnect(UdpDisconnectReason reason, bool initiate = true, string reasonString = "")
         {
             if (Interlocked.CompareExchange(ref disconnected, 1, 0) == 1) return false; // return if this method was already called
             var currentState = SetConnectionState(ConnectionState.Disconnected);
@@ -413,7 +413,7 @@ namespace Utils.NET.Net.Udp
                 case ConnectionState.Connected:
                     if (initiate)
                     {
-                        SendUdp(new UdpDisconnect(salt, UdpDisconnectReason.ClientDisconnect)); // only send if already connected and initiating the disconnect
+                        SendUdp(new UdpDisconnect(salt, reason, reasonString)); // only send if already connected and initiating the disconnect
                     }
                     HandleDisconnect();
                     OnDisconnect?.Invoke(this);
@@ -477,7 +477,7 @@ namespace Utils.NET.Net.Udp
             }
             catch (ObjectDisposedException)
             {
-                Disconnect();
+                Disconnect(UdpDisconnectReason.Unknown);
                 return;
             }
         }
@@ -495,12 +495,12 @@ namespace Utils.NET.Net.Udp
             }
             catch (SocketException)
             {
-                Disconnect();
+                Disconnect(UdpDisconnectReason.Unknown);
                 return;
             }
             catch (ObjectDisposedException)
             {
-                Disconnect();
+                Disconnect(UdpDisconnectReason.Unknown);
                 return;
             }
 
@@ -614,7 +614,7 @@ namespace Utils.NET.Net.Udp
         private void HandleDisconnect(UdpDisconnect disconnect)
         {
             Log.Error("Server disconnected client: " + disconnect.ReasonString);
-            Disconnect(false);
+            Disconnect(UdpDisconnectReason.ClientDisconnect, false);
         }
 
         #endregion
@@ -710,7 +710,7 @@ namespace Utils.NET.Net.Udp
             }
             catch (ObjectDisposedException)
             {
-                Disconnect();
+                Disconnect(UdpDisconnectReason.Unknown);
                 return;
             }
         }
