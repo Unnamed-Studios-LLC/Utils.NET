@@ -9,6 +9,8 @@ namespace Utils.NET.Net.Udp.Reliability
 {
     public class OrderedPacket<TPacket> : Packet where TPacket : Packet
     {
+        public override string ToString() => packet.ToString();
+
         public override byte Id => packet.Id;
 
         /// <summary>

@@ -25,6 +25,10 @@ namespace Utils.NET.Net.Tcp
             Payload
         }
 
+        public IPAddress RemoteAddress => ((IPEndPoint)socket.RemoteEndPoint).Address;
+
+        public IPEndPoint RemoteEndPoint => (IPEndPoint)socket.RemoteEndPoint;
+
         /// <summary>
         /// System socket used to send and receive data
         /// </summary>
@@ -65,6 +69,16 @@ namespace Utils.NET.Net.Tcp
         /// </summary>
         private ConcurrentDictionary<int, OnTokenPacketCallback> tokenCallbacks = new ConcurrentDictionary<int, OnTokenPacketCallback>();
 
+        /// <summary>
+        /// Queue of packets to send async
+        /// </summary>
+        private Queue<SendPayload> sendQueue = new Queue<SendPayload>();
+
+        /// <summary>
+        /// True if currently sending a packet
+        /// </summary>
+        private bool sending = false;
+
         public NetConnection(Socket socket)
         {
             this.socket = socket;
@@ -90,15 +104,7 @@ namespace Utils.NET.Net.Tcp
 
         public bool Connect(string host, int port)
         {
-            try
-            {
-                socket.Connect(host, port);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            return Connect(new IPEndPoint(IPAddress.Parse(host), port));
         }
 
         public bool Connect(EndPoint endPoint)
@@ -116,18 +122,7 @@ namespace Utils.NET.Net.Tcp
 
         public void ConnectAsync(string host, int port, OnConnectCallback callback)
         {
-            try
-            {
-                socket.BeginConnect(host, port, OnConnect, callback);
-            }
-            catch (SocketException)
-            {
-                callback(false, this);
-            }
-            catch (ObjectDisposedException)
-            {
-                callback(false, this);
-            }
+            ConnectAsync(new IPEndPoint(IPAddress.Parse(host), port), callback);
         }
 
         public void ConnectAsync(EndPoint endPoint, OnConnectCallback callback)
@@ -136,7 +131,7 @@ namespace Utils.NET.Net.Tcp
             {
                 socket.BeginConnect(endPoint, OnConnect, callback);
             }
-            catch (ObjectDisposedException)
+            catch
             {
                 callback(false, this);
             }
@@ -144,14 +139,13 @@ namespace Utils.NET.Net.Tcp
 
         public void OnConnect(IAsyncResult ar)
         {
-            var callback = (OnConnectCallback)ar.AsyncState;
+            var callback = ar.AsyncState as OnConnectCallback;
             try
             {
                 socket.EndConnect(ar);
             }
-            catch (ObjectDisposedException) { }
-            catch (SocketException) { }
-            callback(socket.Connected, this);
+            catch { }
+            callback?.Invoke(socket.Connected, this);
         }
 
         #endregion
@@ -165,11 +159,14 @@ namespace Utils.NET.Net.Tcp
             return true;
         }
 
-        protected virtual void DoDisconnect()
+        private void DoDisconnect()
         {
             disconnectCallback?.Invoke(this);
             socket.Close();
+            OnDisconnect();
         }
+
+        protected abstract void OnDisconnect();
 
         /// <summary>
         /// Sets the callback to be called upon disconnection
@@ -267,9 +264,84 @@ namespace Utils.NET.Net.Tcp
 
         #region Async
 
+        private class SendPayload
+        {
+            public IO.Buffer buffer;
+
+            public TPacket packet;
+        }
+
         public void SendAsync(TPacket packet)
         {
+            var buffer = PackagePacket(packet);
+            SendAsync(new SendPayload
+            {
+                buffer = buffer,
+                packet = packet
+            });
+        }
 
+        private void SendAsync(SendPayload payload)
+        {
+            lock (sendQueue)
+            {
+                if (sending)
+                {
+                    sendQueue.Enqueue(payload);
+                    return;
+                }
+                sending = true;
+            }
+
+            DequeuePayload();
+        }
+
+        private void DequeuePayload()
+        {
+            SendPayload payload;
+            lock (sendQueue)
+            {
+                if (sendQueue.Count == 0)
+                {
+                    sending = false;
+                    return;
+                }
+
+                payload = sendQueue.Dequeue();
+            }
+
+            SendBufferAsync(payload);
+        }
+
+        private void SendBufferAsync(SendPayload payload)
+        {
+            socket.BeginSend(payload.buffer.data, 0, payload.buffer.size, SocketFlags.None, out SocketError error, OnSend, payload);
+            if (CheckError(error))
+            {
+                Log.Error("SocketError received on SendAsync: " + error);
+                if (payload.packet is ITokenPacket token && !token.TokenResponse)
+                    tokenCallbacks.TryRemove(token.Token, out var dummy);
+                Disconnect();
+                return;
+            }
+        }
+
+        private void OnSend(IAsyncResult ar)
+        {
+            var sentLength = socket.EndSend(ar, out SocketError error);
+            var payload = (SendPayload)ar.AsyncState;
+            if (CheckError(error))
+            {
+                Log.Error("SocketError received on SendAsync: " + error);
+                if (payload.packet is ITokenPacket token && !token.TokenResponse)
+                    tokenCallbacks.TryRemove(token.Token, out var dummy);
+                Disconnect();
+                return;
+            }
+            else
+            {
+                DequeuePayload();
+            }
         }
 
         #endregion
@@ -278,7 +350,7 @@ namespace Utils.NET.Net.Tcp
 
         #region Reading
 
-        public abstract void HandlePacket(TPacket packet);
+        protected abstract void HandlePacket(TPacket packet);
 
         private void ReceivedSize()
         {
@@ -337,7 +409,7 @@ namespace Utils.NET.Net.Tcp
             }
         }
 
-        public void ReadSize()
+        private void ReadSize()
         {
             if (disconnected == 1) return;
             while (buffer.RemainingLength > 0)
@@ -361,7 +433,7 @@ namespace Utils.NET.Net.Tcp
             ReceivedSize();
         }
 
-        public void ReadPayload()
+        private void ReadPayload()
         {
             if (disconnected == 1) return;
             while (buffer.RemainingLength > 0)

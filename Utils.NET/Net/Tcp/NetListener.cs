@@ -24,13 +24,13 @@ namespace Utils.NET.Net.Tcp
             socket.Listen(5);
         }
 
-        public void Start()
+        public virtual void Start()
         {
             Log.Write(LogEntry.Init(this).Append(" is listening on port: " + localEndPoint.Port));
             socket.BeginAccept(OnAcceptCallback, null);
         }
 
-        public void Stop()
+        public virtual void Stop()
         {
             socket.Close();
         }
@@ -47,6 +47,6 @@ namespace Utils.NET.Net.Tcp
             HandleConnection(connection);
         }
 
-        public abstract void HandleConnection(TCon connection);
+        protected abstract void HandleConnection(TCon connection);
     }
 }

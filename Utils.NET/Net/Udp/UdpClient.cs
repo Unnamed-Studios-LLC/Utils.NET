@@ -182,6 +182,7 @@ namespace Utils.NET.Net.Udp
         private void Init()
         {
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, 1000);
 
             packetFactory = new PacketFactory<TPacket>();
             buffer = new IO.Buffer(Max_Packet_Size);
@@ -475,9 +476,14 @@ namespace Utils.NET.Net.Udp
                 //Log.Write("Receiving from: " + ip.Address + ":" + ip.Port + " At port: " + LocalPort);
                 socket.BeginReceiveFrom(buffer.data, 0, Max_Packet_Size, SocketFlags.None, ref remoteEndPoint, OnRead, state);
             }
+            catch (SocketException)
+            {
+                Disconnect(UdpDisconnectReason.Custom, true, "Failed to begin read");
+                return;
+            }
             catch (ObjectDisposedException)
             {
-                Disconnect(UdpDisconnectReason.Unknown);
+                Disconnect(UdpDisconnectReason.Custom, true, "Failed to begin read");
                 return;
             }
         }
@@ -493,14 +499,14 @@ namespace Utils.NET.Net.Udp
             {
                 length = socket.EndReceiveFrom(ar, ref remoteEndPoint);
             }
-            catch (SocketException)
+            catch (SocketException socketException)
             {
-                Disconnect(UdpDisconnectReason.Unknown);
+                Disconnect(UdpDisconnectReason.Custom, true, "End receive socket exception: " + socketException.Message);
                 return;
             }
             catch (ObjectDisposedException)
             {
-                Disconnect(UdpDisconnectReason.Unknown);
+                Disconnect(UdpDisconnectReason.Custom, true, "End receive object disposed exception");
                 return;
             }
 
@@ -613,7 +619,7 @@ namespace Utils.NET.Net.Udp
 
         private void HandleDisconnect(UdpDisconnect disconnect)
         {
-            Log.Error("Server disconnected client: " + disconnect.ReasonString);
+            Log.Error("Remote disconnected client: " + disconnect.ReasonString);
             Disconnect(UdpDisconnectReason.ClientDisconnect, false);
         }
 
@@ -710,7 +716,7 @@ namespace Utils.NET.Net.Udp
             }
             catch (ObjectDisposedException)
             {
-                Disconnect(UdpDisconnectReason.Unknown);
+                Disconnect(UdpDisconnectReason.Custom, true, "Begin send object disposed exception");
                 return;
             }
         }
