@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils.NET.Pathfinding;
 
 namespace Utils.NET.Geometry
 {
-    public struct Int2
+    public struct Int2 : IPathNode<Int2>
     {
         public int x;
 
@@ -12,6 +13,10 @@ namespace Utils.NET.Geometry
 
         public float Length => (float)Math.Sqrt(x * x + y * y);
         public float SqrLength => x * x + y * y;
+
+        public Vec2 Position => new Vec2(x, y);
+
+        public IEnumerable<Int2> Adjacent => new Int2[] { new Vec2(x + 1, y), new Vec2(x - 1, y), new Vec2(x, y + 1), new Vec2(x, y - 1) };
 
         public Int2(int x, int y)
         {

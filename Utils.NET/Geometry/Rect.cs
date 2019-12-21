@@ -6,6 +6,8 @@ namespace Utils.NET.Geometry
 {
     public struct Rect
     {
+        public static Rect FromBoundsParams(params Vec2[] bounds) => FromBounds(bounds);
+
         public static Rect FromBounds(IEnumerable<Vec2> bounds)
         {
             Vec2 min = new Vec2();

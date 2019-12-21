@@ -14,6 +14,8 @@ namespace Utils.NET.Geometry
 
         public const float Deg2Rad = 0.01745329251f;
 
+        public const float Sqrt2 = 1.41421356237f;
+
         /// <summary>
         /// Normalizes given radians between 0 - 2PI
         /// </summary>
