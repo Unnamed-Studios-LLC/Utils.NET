@@ -49,6 +49,9 @@ namespace Utils.NET.Geometry
         public static Int2 operator *(Int2 a, int b) => a.Multiply(b);
         public static Int2 operator /(Int2 a, int b) => a.Divide(b);
 
+        public static bool operator ==(Int2 a, Int2 b) => a.x == b.x && a.y == b.y;
+        public static bool operator !=(Int2 a, Int2 b) => !(a == b);
+
         public static implicit operator Int2(Vec2 vec) => new Int2((int)vec.x, (int)vec.y);
         public static implicit operator Int2(int value) => new Int2(value, value);
     }
