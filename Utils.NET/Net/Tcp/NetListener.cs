@@ -15,6 +15,8 @@ namespace Utils.NET.Net.Tcp
 
         private Socket socket;
 
+        private bool running = false;
+
         public NetListener(int port)
         {
             localEndPoint = new IPEndPoint(IPAddress.Any, port);
@@ -27,17 +29,25 @@ namespace Utils.NET.Net.Tcp
         public virtual void Start()
         {
             Log.Write(LogEntry.Init(this).Append(" is listening on port: " + localEndPoint.Port));
+            running = true;
             socket.BeginAccept(OnAcceptCallback, null);
         }
 
         public virtual void Stop()
         {
+            running = false;
             socket.Close();
         }
 
         private void OnAcceptCallback(IAsyncResult ar)
         {
             Socket remoteSocket = socket.EndAccept(ar);
+            if (!running)
+            {
+                remoteSocket.Dispose();
+                return;
+            }
+
             TCon connection = (TCon)Activator.CreateInstance(typeof(TCon), remoteSocket);
             if (connection == null)
             {
@@ -45,6 +55,8 @@ namespace Utils.NET.Net.Tcp
                 return;
             }
             HandleConnection(connection);
+
+            socket.BeginAccept(OnAcceptCallback, null);
         }
 
         protected abstract void HandleConnection(TCon connection);
