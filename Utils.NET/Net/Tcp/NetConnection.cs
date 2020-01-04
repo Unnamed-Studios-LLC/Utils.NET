@@ -249,7 +249,16 @@ namespace Utils.NET.Net.Tcp
 
         private void SendBuffer(IO.Buffer buffer, TPacket packet)
         {
-            socket.Send(buffer.data, 0, buffer.size, SocketFlags.None, out SocketError error);
+            SocketError error;
+            try
+            {
+                socket.Send(buffer.data, 0, buffer.size, SocketFlags.None, out error);
+            }
+            catch
+            {
+                error = SocketError.Disconnecting;
+            }
+
             if (CheckError(error))
             {
                 Log.Error("SocketError received on Send: " + error);
