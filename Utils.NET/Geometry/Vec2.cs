@@ -20,6 +20,10 @@ namespace Utils.NET.Geometry
             this.y = y;
         }
 
+
+        public Vec2 Clamp(float min, float max) => Clamp(new Vec2(min, min), new Vec2(max, max));
+        public Int2 Clamp(Vec2 low, Vec2 high) => new Vec2(x < low.x ? low.x : (x > high.x ? high.x : x), y < low.y ? low.y : (y > high.y ? high.y : y));
+
         public Vec2 Add(Vec2 vec) => new Vec2(x + vec.x, y + vec.y);
         public Vec2 Subtract(Vec2 vec) => new Vec2(x - vec.x, y - vec.y);
         public Vec2 Multiply(Vec2 vec) => new Vec2(x * vec.x, y * vec.y);
