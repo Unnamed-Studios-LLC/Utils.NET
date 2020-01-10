@@ -23,26 +23,38 @@ namespace Utils.NET.Collections
         }
     }
 
-    public class RangeMap<T>
+    public class RangePair<T>
     {
-        private class RangePair
+        public Range range;
+        public T value;
+
+        public RangePair(Range range, T value)
         {
-            public Range range;
-            public T value;
-
-            public RangePair(Range range, T value)
-            {
-                this.range = range;
-                this.value = value;
-            }
-
-            public bool InRange(float value)
-            {
-                return value >= range.min && value < range.max;
-            }
+            this.range = range;
+            this.value = value;
         }
 
-        private List<RangePair> rangePairs = new List<RangePair>();
+        public bool InRange(float value)
+        {
+            return value >= range.min && value < range.max;
+        }
+    }
+
+    public class RangeMap<T>
+    {
+        public int Count => rangePairs.Count;
+
+        private List<RangePair<T>> rangePairs = new List<RangePair<T>>();
+
+        public RangeMap()
+        {
+
+        }
+
+        public RangeMap(IEnumerable<RangePair<T>> pairs)
+        {
+            rangePairs.AddRange(pairs);
+        }
 
         public T this[float i]
         {
@@ -61,7 +73,12 @@ namespace Utils.NET.Collections
 
         public void Add(Range range, T value)
         {
-            rangePairs.Add(new RangePair(range, value));
+            rangePairs.Add(new RangePair<T>(range, value));
+        }
+
+        public void Add(RangePair<T> pair)
+        {
+            rangePairs.Add(pair);
         }
     }
 }
