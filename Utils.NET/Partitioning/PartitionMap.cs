@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Utils.NET.Geometry;
+using Utils.NET.Logging;
 
 namespace Utils.NET.Partitioning
 {
@@ -19,7 +20,7 @@ namespace Utils.NET.Partitioning
 
         public IEnumerable<T> GetNearObjects(Rect rect)
         {
-            foreach (var point in GetPartitionPoints(new IntRect((int)rect.x, (int)rect.y, (int)(rect.x + rect.width) - (int)(rect.x), (int)(rect.y + rect.height) - (int)(rect.y))))
+            foreach (var point in GetPartitionPoints(rect.GetIntRect()))
             {
                 foreach (var obj in GetPartition(point.x, point.y))
                     yield return obj;
@@ -32,8 +33,8 @@ namespace Utils.NET.Partitioning
         /// <param name="o"></param>
         public void Add(T o)
         {
-            var rect = o.BoundingRect;
-            o.LastBoundingRect = new IntRect(rect.BottomLeft, rect.TopRight - rect.BottomLeft);
+            var rect = o.BoundingRect.GetIntRect();
+            o.LastBoundingRect = rect;
             foreach (var point in GetPartitionPoints(o.LastBoundingRect))
             {
                 AddToPartition(o, point.x, point.y);
@@ -58,8 +59,7 @@ namespace Utils.NET.Partitioning
         /// <param name="o"></param>
         public void Update(T o)
         {
-            var rect = o.BoundingRect;
-            var newBounding = new IntRect((int)rect.x, (int)rect.y, (int)(rect.x + rect.width), (int)(rect.y + rect.height));
+            var newBounding = o.BoundingRect.GetIntRect();
             if (newBounding == o.LastBoundingRect) return;
             foreach (var point in GetPartitionPoints(o.LastBoundingRect))
             {
@@ -89,6 +89,11 @@ namespace Utils.NET.Partitioning
                     yield return new Int2(x, y);
                 }
             }
+        }
+
+        public IEnumerable<T> GetPartitionFromPoint(int x, int y)
+        {
+            return GetPartition(x / partitionSize, y / partitionSize);
         }
 
         /// <summary>
