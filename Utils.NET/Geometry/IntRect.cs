@@ -36,6 +36,8 @@ namespace Utils.NET.Geometry
         }
 
         public static bool operator ==(IntRect a, IntRect b) => a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
-        public static bool operator !=(IntRect a, IntRect b) => a.x != b.x || a.y != b.y || a.width != b.width || a.height != b.height;
+        public static bool operator !=(IntRect a, IntRect b) => !(a == b);
+
+        public override string ToString() => $"{{{x}, {y}, {width}, {height}}}";
     }
 }
