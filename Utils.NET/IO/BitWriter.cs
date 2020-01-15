@@ -40,6 +40,7 @@ namespace Utils.NET.IO
         {
             uint[] newBuffer = new uint[buffer.Length + Default_Length];
             System.Buffer.BlockCopy(buffer, 0, newBuffer, 0, sizeof(uint) * buffer.Length);
+            buffer = newBuffer;
         }
 
         /// <summary>
