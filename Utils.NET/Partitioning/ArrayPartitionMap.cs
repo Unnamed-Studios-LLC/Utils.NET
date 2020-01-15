@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Utils.NET.Geometry;
+using Utils.NET.Logging;
 
 namespace Utils.NET.Partitioning
 {
@@ -20,7 +21,7 @@ namespace Utils.NET.Partitioning
         /// <summary>
         /// Grid array of all partitions
         /// </summary>
-        private List<T>[,] partitions;
+        private HashSet<T>[,] partitions;
 
         private Int2 min;
         private Int2 max;
@@ -30,12 +31,12 @@ namespace Utils.NET.Partitioning
             this.width = width;
             this.height = height;
 
-            partitions = new List<T>[(width + partitionSize - 1) / partitionSize, (height + partitionSize - 1) / partitionSize];
+            partitions = new HashSet<T>[(width + partitionSize - 1) / partitionSize, (height + partitionSize - 1) / partitionSize];
             for (int y = 0; y < partitions.GetLength(1); y++)
             {
                 for (int x = 0; x < partitions.GetLength(0); x++)
                 {
-                    partitions[x, y] = new List<T>();
+                    partitions[x, y] = new HashSet<T>();
                 }
             }
 
