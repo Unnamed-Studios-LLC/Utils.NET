@@ -20,7 +20,7 @@ namespace Utils.NET.Net
         protected virtual Dictionary<byte, Type> GetPacketTypes()
         {
             var t = typeof(TPacket);
-            return t.Assembly.GetTypes().Where(_ => _.IsSubclassOf(t)).ToDictionary(_ => ((TPacket)Activator.CreateInstance(_)).Id);
+            return t.Assembly.GetTypes().Where(_ => _.IsSubclassOf(t) && !_.IsAbstract).ToDictionary(_ => ((TPacket)Activator.CreateInstance(_)).Id);
         }
 
         public virtual TPacket CreatePacket(byte id)
