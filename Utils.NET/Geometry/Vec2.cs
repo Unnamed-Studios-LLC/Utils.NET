@@ -42,6 +42,12 @@ namespace Utils.NET.Geometry
         public float AngleTo(Vec2 vec) => (float)Math.Atan2(vec.y - y, vec.x - x);
         public float DistanceTo(Vec2 vec) => vec.Subtract(this).Length;
 
+        public Vec2 Normalize()
+        {
+            var l = Length;
+            return new Vec2(x / l, y / l);
+        }
+
         public static Vec2 FromAngle(float radians) => new Vec2((float)Math.Cos(radians), (float)Math.Sin(radians));
         public static Vec2 FromAngle(float sin, float cos) => new Vec2(cos, sin);
 
