@@ -49,5 +49,18 @@ namespace Utils.NET.Geometry
                 return 360 + (degrees % 360);
             }
         }
+
+        /*
+        /// <summary>
+        /// Returns the difference between two given angles
+        /// </summary>
+        /// <param name="angleA"></param>
+        /// <param name="angleB"></param>
+        /// <returns></returns>
+        public static float Difference(float angleA, float angleB)
+        {
+
+        }
+        */
     }
 }
