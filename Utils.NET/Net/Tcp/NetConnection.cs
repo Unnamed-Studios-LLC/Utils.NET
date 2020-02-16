@@ -302,7 +302,7 @@ namespace Utils.NET.Net.Tcp
                 sending = true;
             }
 
-            DequeuePayload();
+            SendBufferAsync(payload);
         }
 
         private void DequeuePayload()
