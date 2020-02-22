@@ -48,6 +48,9 @@ namespace Utils.NET.Geometry
             return new Vec2(x / l, y / l);
         }
 
+        public static Vec2 zero = new Vec2(0, 0);
+        public static Vec2 one = new Vec2(1, 1);
+
         public static Vec2 FromAngle(float radians) => new Vec2((float)Math.Cos(radians), (float)Math.Sin(radians));
         public static Vec2 FromAngle(float sin, float cos) => new Vec2(cos, sin);
 
