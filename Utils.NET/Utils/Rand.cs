@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Utils.NET.Geometry;
 
 namespace Utils.NET.Utils
 {
@@ -53,6 +54,15 @@ namespace Utils.NET.Utils
         #endregion
 
         #region Float
+
+        /// <summary>
+        /// Returns a random float value at or between 0 and 2 PI
+        /// </summary>
+        /// <returns>The value.</returns>
+        public static float AngleValue()
+        {
+            return (float)random.NextDouble() * AngleUtils.PI_2;
+        }
 
         /// <summary>
         /// Returns a random float value at or between 0 and 1
