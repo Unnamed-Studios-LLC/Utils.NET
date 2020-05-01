@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using Utils.NET.Modules;
 
 namespace Utils.NET.Logging
 {
@@ -21,7 +22,10 @@ namespace Utils.NET.Logging
         /// <param name="line"></param>
         public static void Error(object obj)
         {
-            Error(obj.ToString());
+            if (obj == null)
+                Error("null");
+            else
+                Error(obj.ToString());
         }
 
         /// <summary>
@@ -39,7 +43,10 @@ namespace Utils.NET.Logging
         /// <param name="line"></param>
         public static void Write(object obj)
         {
-            Write(obj.ToString());
+            if (obj == null)
+                Write("null");
+            else
+                Write(obj.ToString());
         }
 
         /// <summary>
@@ -200,6 +207,9 @@ namespace Utils.NET.Logging
                 case "stop":
                 case "q":
                     Dispose();
+                    break;
+                default:
+                    ModularProgram.Command(input);
                     break;
             }
         }
