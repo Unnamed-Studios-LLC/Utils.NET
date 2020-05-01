@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Threading;
 using Utils.NET.Geometry;
 
@@ -99,6 +100,14 @@ namespace Utils.NET.Utils
         {
             var bytes = Bytes(byteLength);
             return Convert.ToBase64String(bytes);
+        }
+
+        public static string String(int length, char[] characters)
+        {
+            var builder = new StringBuilder();
+            for (int i = 0; i < length; i++)
+                builder.Append(characters[Next(characters.Length)]);
+            return builder.ToString();
         }
 
         #endregion
