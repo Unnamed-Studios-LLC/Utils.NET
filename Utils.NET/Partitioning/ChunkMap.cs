@@ -8,6 +8,8 @@ namespace Utils.NET.Partitioning
     public interface IChunk
     {
         void LoadChunk(IntRect bounds);
+
+        void Dispose();
     }
 
     public class ChunkMap<T> where T : IChunk
@@ -88,6 +90,11 @@ namespace Utils.NET.Partitioning
                 position = newPosition;
                 obj.LoadChunk(new IntRect(position, new Int2(chunkSize, chunkSize)));
             }
+
+            public void Dispose()
+            {
+                obj.Dispose();
+            }
         }
 
         public int width;
@@ -100,7 +107,7 @@ namespace Utils.NET.Partitioning
 
         private Int2 chunkViewport;
 
-        private Int2 focus = new Int2(-1, -1);
+        private Int2 focus = new Int2(int.MinValue, int.MinValue);
 
         public ChunkMap(int width, int height, int chunkSize, Int2 viewportSize, Func<Int2, int, T> createChunk)
         {
@@ -117,8 +124,6 @@ namespace Utils.NET.Partitioning
                     var position = new Int2(x, y) * chunkSize;
                     chunks[x, y] = new Chunk(position, createChunk(position, chunkSize));
                 }
-
-            SetFocus(0, 0);
         }
 
         public void SetFocus(int x, int y) => SetFocus(new Int2(x, y));
@@ -141,7 +146,7 @@ namespace Utils.NET.Partitioning
 
         public T LiveChunkAt(int x, int y)
         {
-            //var viewDif = new Int2(x, y) - chunkViewport * chunkSize;
+            if (focus.x == int.MinValue) return default;
             int viewportX = x % (chunkViewport.x * chunkSize);
             int viewportY = y % (chunkViewport.y * chunkSize);
 
@@ -152,6 +157,15 @@ namespace Utils.NET.Partitioning
             if (chunk.position != new Int2((x / chunkSize) * chunkSize, (y / chunkSize) * chunkSize))
                 return default;
             return chunk.obj;
+        }
+
+        public void Dispose()
+        {
+            for (int y = 0; y < chunkViewport.y; y++)
+                for (int x = 0; x < chunkViewport.x; x++)
+                {
+                    chunks[x, y].Dispose();
+                }
         }
     }
 }
