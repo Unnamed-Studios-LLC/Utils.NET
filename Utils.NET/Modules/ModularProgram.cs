@@ -10,10 +10,15 @@ namespace Utils.NET.Modules
 {
     public class ModularProgram
     {
+        public static void Command(string command)
+        {
+            instance.ProcessInput(command);
+        }
+
         /// <summary>
         /// The static instance of the program
         /// </summary>
-        public static ModularProgram Instance = new ModularProgram();
+        public static ModularProgram instance = new ModularProgram();
         
         /// <summary>
         /// Runs the program with given modules
@@ -21,13 +26,13 @@ namespace Utils.NET.Modules
         public static void Run(params Module[] modules)
         {
             for (int i = 0; i < modules.Length; i++)
-                Instance.AddModule(modules[i]);
+                instance.AddModule(modules[i]);
 
-            Instance.LoadExternalModules();
+            instance.LoadExternalModules();
 
             Log.Run();
 
-            Instance.Stop();
+            instance.Stop();
         }
 
         /// <summary>
@@ -94,6 +99,52 @@ namespace Utils.NET.Modules
                     module.Stop();
                 }
             }
+        }
+
+        /// <summary>
+        /// Processes input received from the console
+        /// </summary>
+        /// <param name="command"></param>
+        public void ProcessInput(string input)
+        {
+            var split = input.Split(' ');
+            if (split.Length == 0) return;
+            Module module = null;
+            if (Modules.Count > 1)
+            {
+                if (split.Length == 1)
+                {
+                    Log.Error("Single commands are not allowed when multiple modules are loaded");
+                    return;
+                }
+
+                var name = split[0];
+                foreach (var m in Modules)
+                    if (m.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        module = m;
+                        break;
+                    }
+
+                if (module == null)
+                {
+                    Log.Error($"Module '{name}' not found");
+                    return;
+                }
+
+                var commands = new string[split.Length - 1];
+                Array.Copy(split, 1, commands, 0, commands.Length);
+                split = commands;
+            }
+            else if (Modules.Count == 0)
+                return;
+            else
+                module = Modules[0];
+
+            var args = new string[split.Length - 1];
+            Array.Copy(split, 1, args, 0, args.Length);
+
+            module.OnCommand(split[0], args);
         }
     }
 }
