@@ -51,5 +51,12 @@ namespace Utils.NET.Utils
             if (number >= 1) return "I" + ToRoman(number - 1);
             throw new ArgumentOutOfRangeException("something bad happened");
         }
+
+        public static string ApplyPlural(string word, int count)
+        {
+            if (count == 1)
+                return word;
+            return word + 's';
+        }
     }
 }
