@@ -54,6 +54,11 @@ namespace Utils.NET.Geometry
             return new Vec2((x / currentLength) * length, (y / currentLength) * length);
         }
 
+        public Vec2 SetLength(float length, float currentLength)
+        {
+            return new Vec2((x / currentLength) * length, (y / currentLength) * length);
+        }
+
         public static Vec2 zero = new Vec2(0, 0);
         public static Vec2 one = new Vec2(1, 1);
 
