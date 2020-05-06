@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -57,6 +57,25 @@ namespace Utils.NET.Utils
             if (count == 1)
                 return word;
             return word + 's';
+        }
+
+        public static bool DoesMatchPattern(string input, string pattern)
+        {
+            pattern = pattern.ToLower();
+            pattern = pattern.Replace(" ", "");
+            input = input.ToLower();
+            input = input.Replace(" ", "");
+
+            int lastFound = 0;
+
+            for (int i = 0; i < pattern.Length; i++)
+            {
+                var searchCharacter = pattern[i];
+                int index = input.IndexOf(searchCharacter, lastFound);
+                if (index < 0) return false;
+                lastFound = index + 1;
+            }
+            return true;
         }
     }
 }
