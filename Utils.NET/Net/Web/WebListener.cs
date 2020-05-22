@@ -39,7 +39,8 @@ namespace Utils.NET.Net.Web
         public void Start()
         {
             listener.Start();
-            listener.BeginGetContext(OnGetContext, null);
+            //listener.BeginGetContext(OnGetContext, null);
+            StartGetContext();
 
             Log.Write("Web server running on prefix: " + listener.Prefixes.First());
         }
@@ -54,25 +55,25 @@ namespace Utils.NET.Net.Web
             handlers.Add(subPath.ToLower(), handler);
         }
 
-        private async void OnGetContext(IAsyncResult ar)
+        private async void StartGetContext()
         {
             HttpListenerContext context;
-            try
+            while (listener.IsListening)
             {
-                context = listener.EndGetContext(ar);
-            }
-            catch (Exception)
-            {
-                return;
-            }
-            finally
-            {
-                if (listener.IsListening)
+                try
                 {
-                    listener.BeginGetContext(OnGetContext, null);
+                    context = await listener.GetContextAsync();
+                    await HandleContext(context);
+                    context.Response.OutputStream.Close();
+                    context.Response.Close();
                 }
+                catch { }
             }
+        }
 
+
+        private async Task HandleContext(HttpListenerContext context)
+        { 
             var query = new NameValueCollection();
             using (StreamReader rdr = new StreamReader(context.Request.InputStream))
                 query = HttpUtility.ParseQueryString(rdr.ReadToEnd());
@@ -89,22 +90,35 @@ namespace Utils.NET.Net.Web
             if (!handlers.TryGetValue(localPath, out var handler)) // no handler found
             {
                 context.Response.StatusCode = 404;
-                context.Response.Close();
+                context.Response.ContentType = "text/plain";
+                using (var wr = new StreamWriter(context.Response.OutputStream))
+                {
+                    await wr.WriteLineAsync("Nothing here.");
+                    wr.Flush();
+                }
                 return;
             }
 
             try
             {
-                using (var wr = new StreamWriter(context.Response.OutputStream))
+                var obj = await handler.Invoke(context, query);
+                if (obj is byte[] byteArray)
                 {
-                    var obj = await handler.Invoke(context, query);
-                    GetSerializer(obj.GetType()).Serialize(wr, obj);
-                    wr.Flush();
+                    await context.Response.OutputStream.WriteAsync(byteArray, 0, byteArray.Length);
+                }
+                else if (obj != null)
+                {
+                    context.Response.ContentType = "application/xml";
+                    using (var wr = new StreamWriter(context.Response.OutputStream))
+                    {
+                        GetSerializer(obj.GetType()).Serialize(wr, obj);
+                        wr.Flush();
+                    }
                 }
             }
-            finally
+            catch (Exception e)
             {
-                context.Response.Close();
+                Log.Write(e);
             }
         }
 
