@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -50,17 +50,24 @@ namespace Utils.NET.Geometry
             }
         }
 
-        /*
         /// <summary>
-        /// Returns the difference between two given angles
+        /// Returns the shortest difference between two given angles
         /// </summary>
-        /// <param name="angleA"></param>
-        /// <param name="angleB"></param>
+        /// <param name="angleA">First angle in radians</param>
+        /// <param name="angleB">Second angle in radians</param>
         /// <returns></returns>
         public static float Difference(float angleA, float angleB)
         {
+            var normA = NormalizeRadians(angleA);
+            var normB = NormalizeRadians(angleB);
 
+            float dif = normA - normB;
+            if (dif > PI)
+                dif -= PI;
+            if (dif < -PI)
+                dif += PI;
+
+            return dif;
         }
-        */
     }
 }
