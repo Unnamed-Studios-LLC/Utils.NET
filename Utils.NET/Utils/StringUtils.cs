@@ -1,12 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Net.Mail;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Utils.NET.Utils
 {
+    public enum PasswordStrength
+    {
+        Blank,
+        VeryWeak,
+        Weak,
+        Medium,
+        Strong
+    }
+
     public static class StringUtils
     {
+        public static readonly char[] alphaNumericCharacters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
 
         public static uint ParseHex(string hex)
         {
@@ -88,6 +101,120 @@ namespace Utils.NET.Utils
                 lastFound = index + 1;
             }
             return true;
+        }
+
+        public static string Labelize(string input)
+        {
+            var builder = new StringBuilder(input);
+            bool readyForSpace = false;
+            for (int i = 0; i < builder.Length; i++)
+            {
+                var c = builder[i];
+                if (char.IsLower(c))
+                {
+                    readyForSpace = true;
+                    continue;
+                }
+
+                if (char.IsUpper(c) && readyForSpace)
+                {
+                    builder.Insert(i, ' ');
+                    i++;
+                    continue;
+                }
+            }
+            return builder.ToString();
+        }
+
+        public static PasswordStrength GetPasswordStrength(string password)
+        {
+            int score = 0;
+            if (string.IsNullOrWhiteSpace(password)) return PasswordStrength.Blank;
+            if (password.Length >= 8) score++;
+            if (HasUppercaseLetter(password) && HasLowercaseLetter(password)) score++;
+            if (HasDigit(password)) score++;
+            if (HasSpecialCharacter(password)) score++;
+            return (PasswordStrength)score;
+        }
+
+        public static bool HasUppercaseLetter(string input)
+        {
+            foreach (var c in input)
+                if (char.IsUpper(c))
+                    return true;
+            return false;
+        }
+
+        public static bool HasLowercaseLetter(string input)
+        {
+            foreach (var c in input)
+                if (char.IsLower(c))
+                    return true;
+            return false;
+        }
+
+        public static bool HasDigit(string input)
+        {
+            foreach (var c in input)
+                if (char.IsDigit(c))
+                    return true;
+            return false;
+        }
+
+        public static bool HasSpecialCharacter(string input)
+        {
+            foreach (var c in input)
+                if (!char.IsLetterOrDigit(c))
+                    return true;
+            return false;
+        }
+        
+
+        public static bool IsValidEmail(string email) // function pulled from https://docs.microsoft.com/en-us/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            try
+            {
+                // Normalize the domain
+                email = Regex.Replace(email, @"(@)(.+)$", DomainMapper,
+                                      RegexOptions.None, TimeSpan.FromMilliseconds(200));
+
+                // Examines the domain part of the email and normalizes it.
+                string DomainMapper(Match match)
+                {
+                    // Use IdnMapping class to convert Unicode domain names.
+                    var idn = new IdnMapping();
+
+                    // Pull out and process domain name (throws ArgumentException on invalid)
+                    var domainName = idn.GetAscii(match.Groups[2].Value);
+
+                    return match.Groups[1].Value + domainName;
+                }
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+
+            if (email.Contains('+')) return false;
+
+            try
+            {
+                return Regex.IsMatch(email,
+                    @"^(?("")("".+?(?<!\\)""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-z])@))" +
+                    @"(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-0-9a-z]*[0-9a-z]*\.)+[a-z0-9][\-a-z0-9]{0,22}[a-z0-9]))$",
+                    RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
         }
     }
 }
