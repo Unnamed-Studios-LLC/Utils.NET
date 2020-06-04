@@ -5,6 +5,11 @@ using Utils.NET.Logging;
 
 namespace Utils.NET.Utils
 {
+    /// <summary>
+    /// A class used to create template strings with easy to replace keys.
+    /// <para>Example:</para>
+    /// <para>var template = new TemplateString("This is a template string, my name is #name", '#')</para>
+    /// </summary>
     public class TemplateString
     {
         private string[] bodyStrings;
@@ -20,6 +25,19 @@ namespace Utils.NET.Utils
                 bodyStrings[i] = GetKeyAndTruncate(bodyStrings[i], out var key);
                 keys[i - 1] = key;
             }
+        }
+
+        /// <summary>
+        /// Returns if this template contains the given key
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public bool ContainsKey(string key)
+        {
+            for (int i = 0; i < keys.Length; i++)
+                if (keys[i].Equals(key, StringComparison.Ordinal))
+                    return true;
+            return false;
         }
 
         private string GetKeyAndTruncate(string input, out string word)
@@ -38,6 +56,11 @@ namespace Utils.NET.Utils
             return "";
         }
 
+        /// <summary>
+        /// Builds the template string with a given dictionary containing key/values
+        /// </summary>
+        /// <param name="keyValues"></param>
+        /// <returns></returns>
         public string Build(Dictionary<string, string> keyValues)
         {
             var builder = new StringBuilder(bodyStrings[0]);
