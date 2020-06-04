@@ -39,6 +39,8 @@ namespace Utils.NET.Geometry
         public float AngleTo(Int2 vec) => (float)Math.Atan2(vec.y - y, vec.x - x);
         public float DistanceTo(Int2 vec) => vec.Subtract(this).Length;
 
+        public Vec2 ToVec2() => new Vec2(x, y);
+
         public static Int2 operator +(Int2 a, Int2 b) => a.Add(b);
         public static Int2 operator -(Int2 a, Int2 b) => a.Subtract(b);
         public static Int2 operator *(Int2 a, Int2 b) => a.Multiply(b);
