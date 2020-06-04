@@ -135,13 +135,12 @@ namespace Utils.NET.Partitioning
             int chunkX = (newFocus.x / chunkSize) * chunkSize;
             int chunkY = (newFocus.y / chunkSize) * chunkSize;
 
+            focus = newFocus;
             for (int y = 0; y < chunkViewport.y; y++)
                 for (int x = 0; x < chunkViewport.x; x++)
                 {
                     chunks[x, y].UpdateFocus(chunkX, chunkY, chunkViewport * chunkSize, chunkSize);
                 }
-
-            focus = newFocus;
         }
 
         public T LiveChunkAt(int x, int y)
