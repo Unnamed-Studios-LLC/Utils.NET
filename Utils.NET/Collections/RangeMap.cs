@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils.NET.Utils;
 
 namespace Utils.NET.Collections
 {
@@ -20,6 +21,16 @@ namespace Utils.NET.Collections
         {
             this.min = min;
             this.max = max;
+        }
+
+        /// <summary>
+        /// Returns a random value within the min/max range
+        /// </summary>
+        /// <returns></returns>
+        public float GetRandom()
+        {
+            if (min == max) return min;
+            return min + (max - min) * Rand.FloatValue();
         }
     }
 
