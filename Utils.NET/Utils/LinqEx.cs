@@ -37,5 +37,24 @@ namespace Utils.NET.Utils
             }
             return result;
         }
+
+        public static IEnumerable<TResult> SelectWhere<T, TResult>(this IEnumerable<T> collection, Func<T, bool> where, Func<T, TResult> select)
+        {
+            foreach (var value in collection)
+            {
+                if (!where(value)) continue;
+                yield return select(value);
+            }
+        }
+
+        public static IEnumerable<TResult> WhereType<TResult>(this IEnumerable<object> collection) where TResult : class
+        {
+            foreach (var value in collection)
+            {
+                var asValue = value as TResult;
+                if (asValue == null) continue;
+                yield return asValue;
+            }
+        }
     }
 }
