@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Utils.NET.Pathfinding;
@@ -56,5 +56,17 @@ namespace Utils.NET.Geometry
         public static implicit operator Int2(int value) => new Int2(value, value);
 
         public override string ToString() => $"{{{x}, {y}}}";
+
+        public override bool Equals(object obj)
+        {
+            if (obj is Int2 o)
+                return this == o;
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
     }
 }
