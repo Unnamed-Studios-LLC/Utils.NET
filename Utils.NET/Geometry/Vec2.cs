@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Utils.NET.Utils;
 
 namespace Utils.NET.Geometry
 {
@@ -41,6 +42,7 @@ namespace Utils.NET.Geometry
 
         public float AngleTo(Vec2 vec) => (float)Math.Atan2(vec.y - y, vec.x - x);
         public float DistanceTo(Vec2 vec) => vec.Subtract(this).Length;
+        public float SqrDistanceTo(Vec2 vec) => vec.Subtract(this).SqrLength;
 
         public Vec2 Normalize()
         {
@@ -48,19 +50,33 @@ namespace Utils.NET.Geometry
             return new Vec2(x / l, y / l);
         }
 
-        public Vec2 SetLength(float length)
+        public Vec2 ChangeLength(float length)
         {
             var currentLength = Length;
             return new Vec2((x / currentLength) * length, (y / currentLength) * length);
         }
 
-        public Vec2 SetLength(float length, float currentLength)
+        public Vec2 ChangeLength(float length, float currentLength)
         {
             return new Vec2((x / currentLength) * length, (y / currentLength) * length);
         }
 
+        public bool LongerThan(float radius)
+        {
+            return SqrLength > radius * radius;
+        }
+
+        public bool RadiusContains(Vec2 position, float radius)
+        {
+            return !(position - this).LongerThan(radius);
+        }
+
+        public Int2 ToInt2() => new Int2((int)x, (int)y);
+
         public static Vec2 zero = new Vec2(0, 0);
         public static Vec2 one = new Vec2(1, 1);
+
+        public static Vec2 randomAngle => FromAngle(Rand.AngleValue());
 
         public static Vec2 FromAngle(float radians) => new Vec2((float)Math.Cos(radians), (float)Math.Sin(radians));
         public static Vec2 FromAngle(float sin, float cos) => new Vec2(cos, sin);
@@ -82,5 +98,17 @@ namespace Utils.NET.Geometry
         public static implicit operator Vec2(float value) => new Vec2(value, value);
 
         public override string ToString() => $"{{{x}, {y}}}";
+
+        public override bool Equals(object obj)
+        {
+            if (obj is Vec2 o)
+                return this == o;
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
     }
 }
