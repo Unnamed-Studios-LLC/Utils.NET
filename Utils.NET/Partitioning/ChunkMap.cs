@@ -7,6 +7,8 @@ namespace Utils.NET.Partitioning
 {
     public interface IChunk
     {
+        void UpdatePosition(Int2 position);
+
         void LoadChunk(IntRect bounds);
 
         void Dispose();
@@ -19,6 +21,8 @@ namespace Utils.NET.Partitioning
             private bool first = true;
 
             public Int2 position;
+
+            private Int2 focusPosition;
 
             public T obj;
 
@@ -84,10 +88,15 @@ namespace Utils.NET.Partitioning
                     }
                 }
 
-                var newPosition = new Int2(x, y);
-                if (newPosition == position && !first) return;
+                focusPosition = new Int2(x, y);
+                obj.UpdatePosition(focusPosition);
+            }
+
+            public void LoadChunk(int chunkSize)
+            {
+                if (focusPosition == position && !first) return;
                 first = false;
-                position = newPosition;
+                position = focusPosition;
                 obj.LoadChunk(new IntRect(position, new Int2(chunkSize, chunkSize)));
             }
 
@@ -140,6 +149,12 @@ namespace Utils.NET.Partitioning
                 for (int x = 0; x < chunkViewport.x; x++)
                 {
                     chunks[x, y].UpdateFocus(chunkX, chunkY, chunkViewport * chunkSize, chunkSize);
+                }
+
+            for (int y = 0; y < chunkViewport.y; y++)
+                for (int x = 0; x < chunkViewport.x; x++)
+                {
+                    chunks[x, y].LoadChunk(chunkSize);
                 }
         }
 
