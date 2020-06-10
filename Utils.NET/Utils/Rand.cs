@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Threading;
+using Utils.NET.Collections;
 using Utils.NET.Geometry;
 
 namespace Utils.NET.Utils
@@ -88,6 +89,11 @@ namespace Utils.NET.Utils
         #endregion
 
         #region Misc
+
+        public static float Range(Range range)
+        {
+            return range.min + (range.max - range.min) * FloatValue();
+        }
 
         public static byte[] Bytes(int length)
         {
