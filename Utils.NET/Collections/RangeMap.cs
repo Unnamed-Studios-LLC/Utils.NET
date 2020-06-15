@@ -32,6 +32,8 @@ namespace Utils.NET.Collections
             if (min == max) return min;
             return min + (max - min) * Rand.FloatValue();
         }
+
+        public static implicit operator Range(float value) => new Range(value, value);
     }
 
     public class RangePair<T>
