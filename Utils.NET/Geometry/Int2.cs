@@ -57,6 +57,8 @@ namespace Utils.NET.Geometry
         public static implicit operator Int2(Vec2 vec) => new Int2((int)vec.x, (int)vec.y);
         public static implicit operator Int2(int value) => new Int2(value, value);
 
+        public static Int2 zero = new Int2(0, 0);
+
         public override string ToString() => $"{{{x}, {y}}}";
 
         public override bool Equals(object obj)
