@@ -99,6 +99,14 @@ namespace Utils.NET.Logging
         /// <summary>
         /// Runs the log logic
         /// </summary>
+        public static void Step()
+        {
+            Instance.WriteLogLines();
+        }
+
+        /// <summary>
+        /// Runs the log logic
+        /// </summary>
         public static void Stop()
         {
             Instance.Dispose();
@@ -171,12 +179,13 @@ namespace Utils.NET.Logging
                         WriteMethod(inputLine);
                     break;
                 case ConsoleKey.Enter:
+                    inputLine = "";
                     ProcessInput(input);
                     input = "";
                     break;
                 default:
                     var c = key.KeyChar;
-                    if (!char.IsLetterOrDigit(c)) return;
+                    if (!char.IsLetterOrDigit(c) && c != ' ') return;
                     input += c;
                     WriteInputKey(c);
                     break;
