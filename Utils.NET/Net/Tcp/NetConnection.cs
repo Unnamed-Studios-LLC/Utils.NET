@@ -79,6 +79,8 @@ namespace Utils.NET.Net.Tcp
         /// </summary>
         private bool sending = false;
 
+        public int maxReceiveSize = int.MaxValue;
+
         public NetConnection(Socket socket)
         {
             this.socket = socket;
@@ -131,8 +133,9 @@ namespace Utils.NET.Net.Tcp
             {
                 socket.BeginConnect(endPoint, OnConnect, callback);
             }
-            catch
+            catch (Exception e)
             {
+                Log.Error(e);
                 callback(false, this);
             }
         }
@@ -144,7 +147,10 @@ namespace Utils.NET.Net.Tcp
             {
                 socket.EndConnect(ar);
             }
-            catch { }
+            catch (Exception e)
+            {
+                Log.Error(e);
+            }
             callback?.Invoke(socket.Connected, this);
         }
 
@@ -254,8 +260,9 @@ namespace Utils.NET.Net.Tcp
             {
                 socket.Send(buffer.data, 0, buffer.size, SocketFlags.None, out error);
             }
-            catch
+            catch (Exception e)
             {
+                Log.Error(e);
                 error = SocketError.Disconnecting;
             }
 
@@ -286,6 +293,27 @@ namespace Utils.NET.Net.Tcp
             SendAsync(new SendPayload
             {
                 buffer = buffer,
+                packet = packet
+            });
+        }
+
+        public void SendTokenAsync(TPacket packet, OnTokenPacketCallback callback)
+        {
+            if (!TryAssignToken(packet, callback)) return;
+            SendAsync(new SendPayload
+            {
+                buffer = PackageTokenPacket(packet),
+                packet = packet
+            });
+        }
+
+        public void SendTokenResponseAsync(TPacket packet)
+        {
+            if (packet is ITokenPacket token)
+                token.TokenResponse = true;
+            SendAsync(new SendPayload
+            {
+                buffer = PackageTokenPacket(packet),
                 packet = packet
             });
         }
@@ -324,12 +352,21 @@ namespace Utils.NET.Net.Tcp
 
         private void SendBufferAsync(SendPayload payload)
         {
-            socket.BeginSend(payload.buffer.data, 0, payload.buffer.size, SocketFlags.None, out SocketError error, OnSend, payload);
-            if (CheckError(error))
+            try
             {
-                Log.Error("SocketError received on SendAsync: " + error);
-                if (payload.packet is ITokenPacket token && !token.TokenResponse)
-                    tokenCallbacks.TryRemove(token.Token, out var dummy);
+                socket.BeginSend(payload.buffer.data, 0, payload.buffer.size, SocketFlags.None, out SocketError error, OnSend, payload);
+
+                if (CheckError(error))
+                {
+                    Log.Error("SocketError received on SendAsync: " + error);
+                    if (payload.packet is ITokenPacket token && !token.TokenResponse)
+                        tokenCallbacks.TryRemove(token.Token, out var dummy);
+                    Disconnect();
+                    return;
+                }
+            }
+            catch (ObjectDisposedException e)
+            {
                 Disconnect();
                 return;
             }
@@ -364,7 +401,10 @@ namespace Utils.NET.Net.Tcp
         private void ReceivedSize()
         {
             int size = BitConverter.ToInt32(buffer.data, 0);
-            buffer.Reset(size);
+            if (size > maxReceiveSize)
+                Disconnect();
+            else
+                buffer.Reset(size);
         }
 
         private void ReceivedPayload()
@@ -372,7 +412,6 @@ namespace Utils.NET.Net.Tcp
             byte[] data = buffer.data;
             try
             {
-
                 BitReader r = new BitReader(data, data.Length);
                 byte id = r.ReadUInt8();
                 TPacket packet = packetFactory.CreatePacket(id);
@@ -391,8 +430,16 @@ namespace Utils.NET.Net.Tcp
                 }
                 else
                 {
-                    packet.ReadPacket(r);
-                    HandlePacket(packet);
+                    try
+                    {
+                        packet.ReadPacket(r);
+                        HandlePacket(packet);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e);
+                        Disconnect();
+                    }
                 }
             }
             finally

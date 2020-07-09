@@ -41,7 +41,16 @@ namespace Utils.NET.Net.Tcp
 
         private void OnAcceptCallback(IAsyncResult ar)
         {
-            Socket remoteSocket = socket.EndAccept(ar);
+            Socket remoteSocket;
+            try
+            {
+                remoteSocket = socket.EndAccept(ar);
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+
             if (!running)
             {
                 remoteSocket.Dispose();
