@@ -40,7 +40,7 @@ namespace Utils.NET.Net.Web
         {
             listener.Start();
             //listener.BeginGetContext(OnGetContext, null);
-            StartGetContext();
+            BeginGetContext();
 
             Log.Write("Web server running on prefix: " + listener.Prefixes.First());
         }
@@ -55,7 +55,7 @@ namespace Utils.NET.Net.Web
             handlers.Add(subPath.ToLower(), handler);
         }
 
-        private async void StartGetContext()
+        private async void BeginGetContext()
         {
             HttpListenerContext context;
             while (listener.IsListening)
@@ -63,16 +63,13 @@ namespace Utils.NET.Net.Web
                 try
                 {
                     context = await listener.GetContextAsync();
-                    await HandleContext(context);
-                    context.Response.OutputStream.Close();
-                    context.Response.Close();
+                    HandleContext(context);
                 }
                 catch { }
             }
         }
 
-
-        private async Task HandleContext(HttpListenerContext context)
+        private async void HandleContext(HttpListenerContext context)
         { 
             var query = new NameValueCollection();
             using (StreamReader rdr = new StreamReader(context.Request.InputStream))
@@ -120,6 +117,9 @@ namespace Utils.NET.Net.Web
             {
                 Log.Write(e);
             }
+
+            context.Response.OutputStream.Close();
+            context.Response.Close();
         }
 
         private XmlSerializer GetSerializer(Type type)
