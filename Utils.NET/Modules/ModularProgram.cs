@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -68,6 +68,19 @@ namespace Utils.NET.Modules
                 Modules.Add(module);
                 Log.Write("Starting Module: " + module.Name);
                 module.Start();
+            }
+        }
+
+        public T GetModule<T>()
+        {
+            lock (Modules)
+            {
+                foreach (var module in Modules)
+                {
+                    if (module is T t)
+                        return t;
+                }
+                return default;
             }
         }
 
