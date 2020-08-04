@@ -23,6 +23,8 @@ namespace Utils.NET.Modules
 
         private string fileName;
 
+        public readonly bool local;
+
         public Manifest()
         {
 
@@ -34,12 +36,16 @@ namespace Utils.NET.Modules
             {
                 json = JObject.Parse(reader.ReadToEnd());
             }
+
+            local = Value("local", false);
         }
 
         public Manifest(string fileName)
         {
             this.fileName = fileName;
             json = JObject.Parse(File.ReadAllText(fileName));
+
+            local = Value("local", false);
         }
 
         public T Value<T>(string key, T defaultValue)

@@ -84,7 +84,7 @@ namespace Utils.NET.Partitioning
                     }
                     else
                     {
-                        y = chunkY + viewDif.y;
+                        y = chunkY - viewDif.y;
                     }
                 }
 
