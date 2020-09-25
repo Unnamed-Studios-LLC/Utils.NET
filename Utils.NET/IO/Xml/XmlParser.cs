@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
 using Utils.NET.Utils;
@@ -15,7 +16,7 @@ namespace Utils.NET.IO.Xml
 
         public string StringValue => xml.Value;
 
-        public int IntValue => Convert.ToInt32(xml.Value);
+        public int IntValue => Convert.ToInt32(xml.Value, CultureInfo.InvariantCulture);
 
         public uint HexValue => StringUtils.ParseHex(xml.Value);
 
@@ -68,7 +69,7 @@ namespace Utils.NET.IO.Xml
         public int Int(string name, int defaultValue = 0)
         {
             if (!TryGetValue(name, out var value)) return defaultValue;
-            return Convert.ToInt32(value.Value);
+            return Convert.ToInt32(value.Value, CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -80,7 +81,7 @@ namespace Utils.NET.IO.Xml
         public float Float(string name, float defaultValue = 0)
         {
             if (!TryGetValue(name, out var value)) return defaultValue;
-            return Convert.ToSingle(value.Value);
+            return Convert.ToSingle(value.Value, CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -152,7 +153,7 @@ namespace Utils.NET.IO.Xml
         public int AtrInt(string name, int defaultValue = 0)
         {
             if (!TryGetAttribute(name, out var value)) return defaultValue;
-            return Convert.ToInt32(value.Value);
+            return Convert.ToInt32(value.Value, CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -164,7 +165,7 @@ namespace Utils.NET.IO.Xml
         public float AtrFloat(string name, float defaultValue = 0)
         {
             if (!TryGetAttribute(name, out var value)) return defaultValue;
-            return Convert.ToSingle(value.Value);
+            return Convert.ToSingle(value.Value, CultureInfo.InvariantCulture);
         }
 
         /// <summary>
