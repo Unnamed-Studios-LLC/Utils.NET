@@ -20,7 +20,8 @@ namespace Utils.NET.Net.Tcp
         public NetListener(int port)
         {
             localEndPoint = new IPEndPoint(IPAddress.Any, port);
-            socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, 0);
             socket.Bind(localEndPoint);
 
             socket.Listen(5);

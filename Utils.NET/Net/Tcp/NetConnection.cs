@@ -89,7 +89,8 @@ namespace Utils.NET.Net.Tcp
 
         public NetConnection()
         {
-            socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, 0);
             Init();
         }
 
@@ -106,7 +107,7 @@ namespace Utils.NET.Net.Tcp
 
         public bool Connect(string host, int port)
         {
-            return Connect(new IPEndPoint(IPAddress.Parse(host), port));
+            return Connect(new IPEndPoint(IPAddress.Parse(host).MapToIPv6(), port));
         }
 
         public bool Connect(EndPoint endPoint)
@@ -124,7 +125,7 @@ namespace Utils.NET.Net.Tcp
 
         public void ConnectAsync(string host, int port, OnConnectCallback callback)
         {
-            ConnectAsync(new IPEndPoint(IPAddress.Parse(host), port), callback);
+            ConnectAsync(new IPEndPoint(IPAddress.Parse(host).MapToIPv6(), port), callback);
         }
 
         public void ConnectAsync(EndPoint endPoint, OnConnectCallback callback)
