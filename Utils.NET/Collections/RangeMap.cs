@@ -33,6 +33,8 @@ namespace Utils.NET.Collections
             return min + (max - min) * Rand.FloatValue();
         }
 
+        public float Average() => min + (max - min) / 2;
+
         public static implicit operator Range(float value) => new Range(value, value);
     }
 
