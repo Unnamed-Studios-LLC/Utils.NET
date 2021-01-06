@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using Utils.NET.Utils;
 
 namespace Utils.NET.Geometry
 {
+    [StructLayout(LayoutKind.Explicit)]
     public struct Vec2
     {
+        [FieldOffset(0)]
         public float x;
 
+        [FieldOffset(4)]
         public float y;
 
         public float Length => (float)Math.Sqrt(x * x + y * y);

@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using Utils.NET.Pathfinding;
 
 namespace Utils.NET.Geometry
 {
+    [StructLayout(LayoutKind.Explicit)]
     public struct Int2 : IPathNode<Int2>
     {
+        [FieldOffset(0)]
         public int x;
 
+        [FieldOffset(4)]
         public int y;
 
         public float Length => (float)Math.Sqrt(x * x + y * y);
