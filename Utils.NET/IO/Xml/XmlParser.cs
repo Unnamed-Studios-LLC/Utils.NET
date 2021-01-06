@@ -14,11 +14,20 @@ namespace Utils.NET.IO.Xml
         /// </summary>
         private readonly XElement xml;
 
-        public string StringValue => xml.Value;
+        /// <summary>
+        /// The string value of this element
+        /// </summary>
+        public string stringValue => xml.Value;
 
-        public int IntValue => Convert.ToInt32(xml.Value, CultureInfo.InvariantCulture);
+        /// <summary>
+        /// The integer value of this element
+        /// </summary>
+        public int intValue => Convert.ToInt32(xml.Value, CultureInfo.InvariantCulture);
 
-        public uint HexValue => StringUtils.ParseHex(xml.Value);
+        /// <summary>
+        /// The integer value of this element, converted from a hexadecimal string
+        /// </summary>
+        public uint hexValue => StringUtils.ParseHex(xml.Value);
 
 
         public XmlParser(XElement xml)
@@ -31,9 +40,10 @@ namespace Utils.NET.IO.Xml
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public IEnumerable<XElement> Elements(string name)
+        public IEnumerable<XmlParser> Elements(string name)
         {
-            return xml.Elements(name);
+            foreach (var element in xml.Elements(name))
+                yield return new XmlParser(element);
         }
 
         /// <summary>
