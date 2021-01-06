@@ -25,13 +25,13 @@ namespace Utils.NET.Logging
         public static LogEntry Init(LogWrite write) => new LogEntry().Append(write);
 
 
-        public LinkedList<LogWrite> writes = new LinkedList<LogWrite>();
+        public List<LogWrite> writes = new List<LogWrite>();
 
         public LogEntry Append(string text) => Append(text, ConsoleColor.White);
         public LogEntry Append(string text, ConsoleColor color) => Append(new LogWrite(text, color));
         public LogEntry Append(LogWrite write)
         {
-            writes.AddLast(write);
+            writes.Add(write);
             return this;
         }
     }
