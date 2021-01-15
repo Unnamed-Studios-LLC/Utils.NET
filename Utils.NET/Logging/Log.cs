@@ -7,301 +7,143 @@ using Utils.NET.Modules;
 
 namespace Utils.NET.Logging
 {
-    public class Log : IDisposable
+    public class Log
     {
-        public static Action<object> WriteMethod = Console.Write;
-
-        /// <summary>
-        /// Static instance used to handle static log calls
-        /// </summary>
-        private static Log Instance = new Log();
-
-        /// <summary>
-        /// Logs the string representation of the given object
-        /// </summary>
-        /// <param name="line"></param>
-        public static void Error(object obj)
+        private struct Entry
         {
-            if (obj == null)
-                Error("null");
-            else
-                Error(obj.ToString());
-        }
+            /// <summary>
+            /// The text to log
+            /// </summary>
+            public string text;
 
-        /// <summary>
-        /// Logs a line
-        /// </summary>
-        /// <param name="line"></param>
-        public static void Error(string line)
-        {
-            Write(line, ConsoleColor.Red);
-        }
+            /// <summary>
+            /// The color of thi entry
+            /// </summary>
+            public ConsoleColor color;
 
-        /// <summary>
-        /// Logs the string representation of the given object
-        /// </summary>
-        /// <param name="line"></param>
-        public static void Write(object obj)
-        {
-            if (obj == null)
-                Write("null");
-            else
-                Write(obj.ToString());
-        }
-
-        /// <summary>
-        /// Logs the string representation of the given object
-        /// </summary>
-        /// <param name="line"></param>
-        public static void Write(object obj, ConsoleColor color)
-        {
-            Write(obj.ToString(), color);
-        }
-
-        /// <summary>
-        /// Logs a line
-        /// </summary>
-        /// <param name="line"></param>
-        public static void Write(string line)
-        {
-            Write(line, ConsoleColor.White);
-        }
-
-        /// <summary>
-        /// Logs a line
-        /// </summary>
-        /// <param name="line"></param>
-        public static void Write(string line, ConsoleColor color)
-        {
-            Write(LogEntry.Init(line, color));
-        }
-
-        /// <summary>
-        /// Logs an entry
-        /// </summary>
-        /// <param name="line"></param>
-        public static void Write(LogEntry entry)
-        {
-            if (Instance.running)
-                Instance.LogLine(entry);
-            else
-                Instance.WriteEntry(entry);
-        }
-
-        /// <summary>
-        /// Runs the log logic
-        /// </summary>
-        public static void Run()
-        {
-            Instance.RunLog();
-        }
-
-        /// <summary>
-        /// Runs the log logic
-        /// </summary>
-        public static void Step()
-        {
-            Instance.WriteLogLines();
-        }
-
-        /// <summary>
-        /// Runs the log logic
-        /// </summary>
-        public static void Stop()
-        {
-            Instance.Dispose();
-        }
-
-        /// <summary>
-        /// Lines ready to be logged
-        /// </summary>
-        private ConcurrentQueue<LogEntry> logLines = new ConcurrentQueue<LogEntry>();
-
-        /// <summary>
-        /// Event used to delay input checking
-        /// </summary>
-        private ManualResetEvent delayEvent = new ManualResetEvent(false);
-
-        /// <summary>
-        /// Bool determining if the Log is running of not
-        /// </summary>
-        private bool running = false;
-
-        /// <summary>
-        /// The current input line
-        /// </summary>
-        private string inputLine = "";
-
-        public Log()
-        {
-            Console.OutputEncoding = Encoding.UTF8;
-        }
-
-        /// <summary>
-        /// Runs the input loop
-        /// </summary>
-        private void RunLog()
-        {
-            running = true;
-            while (running)
+            public Entry(string text, ConsoleColor color)
             {
-                delayEvent.WaitOne(50);
-
-                ReadKeys();
-                WriteLogLines();
+                this.text = text;
+                this.color = color;
             }
         }
 
         /// <summary>
-        /// Function called by the InputThread to read keys from the console
+        /// The global log instance
         /// </summary>
-        private void ReadKeys()
+        private static Log instance;
+
+        /// <summary>
+        /// Sets the global log instance, to be called by static methods
+        /// </summary>
+        /// <param name="log"></param>
+        public static void SetGlobalLog(Log log)
         {
-            while (Console.KeyAvailable)
-            {
-                ProcessKey(Console.ReadKey(true)); // process received keys
-            }
+            instance = log;
         }
 
         /// <summary>
-        /// Evaluates the received key and processes it accordingly
+        /// Writes a string to the global log
         /// </summary>
-        private void ProcessKey(ConsoleKeyInfo key)
+        /// <param name="value"></param>
+        public static void Write(string value)
         {
-            string input = inputLine;
-            switch (key.Key)
-            {
-                case ConsoleKey.Backspace:
-                    if (input.Length == 0) break;
-                    input = input.Substring(0, input.Length - 1);
-                    ClearCurrentLine();
-                    if (input.Length > 0)
-                        WriteMethod(inputLine);
-                    break;
-                case ConsoleKey.Enter:
-                    inputLine = "";
-                    ProcessInput(input);
-                    input = "";
-                    break;
-                default:
-                    var c = key.KeyChar;
-                    if (!char.IsLetterOrDigit(c) && c != ' ') return;
-                    input += c;
-                    WriteInputKey(c);
-                    break;
-            }
-            inputLine = input;
+            Write(new Entry(value, ConsoleColor.White));
         }
 
         /// <summary>
-        /// Writes the character of the input received to the console
+        /// Write an object to the global log
         /// </summary>
-        /// <param name="key"></param>
-        private void WriteInputKey(char key)
+        /// <param name="value"></param>
+        public static void Write(object value)
         {
-            WriteMethod(key);
+            Write(new Entry(value.ToString(), ConsoleColor.White));
         }
 
         /// <summary>
-        /// processes a received input line
+        /// Writes an error string to the global log
         /// </summary>
-        /// <param name="input"></param>
-        private void ProcessInput(string input)
+        /// <param name="value"></param>
+        public static void Error(string value)
         {
-            input = input.Trim();
-            if (string.IsNullOrWhiteSpace(input)) return; // empty command
-            LogLine(input);
-            switch (input)
-            {
-                case "stop":
-                case "q":
-                    Dispose();
-                    break;
-                default:
-                    ModularProgram.Command(input);
-                    break;
-            }
+            Write(new Entry(value, ConsoleColor.Red));
         }
 
         /// <summary>
-        /// Flushes all available log lines and rewrites the received input
+        /// Writes an error object to the global log
         /// </summary>
-        private void WriteLogLines()
+        /// <param name="value"></param>
+        public static void Error(object value)
         {
-            LogEntry entry;
-            bool first = true;
-            while (logLines.TryDequeue(out entry))
+            Write(new Entry(value.ToString(), ConsoleColor.Red));
+        }
+
+        /// <summary>
+        /// Appends an entry to the log
+        /// </summary>
+        /// <param name="entry"></param>
+        private static void Write(Entry entry)
+        {
+            instance?.WriteEntryConcurrent(entry);
+        }
+
+        /// <summary>
+        /// The method used to write
+        /// </summary>
+        private Action<string> writeMethod;
+
+        /// <summary>
+        /// Entries queued from alternate threads
+        /// </summary>
+        private ConcurrentQueue<Entry> queuedEntries = new ConcurrentQueue<Entry>();
+
+        /// <summary>
+        /// The ID of the logging thread
+        /// </summary>
+        private int loggingThread;
+
+        public Log(Action<string> writeMethod, int loggingThread)
+        {
+            this.writeMethod = writeMethod;
+            this.loggingThread = loggingThread;
+        }
+
+        /// <summary>
+        /// Writes the concurrent queue to the log
+        /// </summary>
+        public void WriteQueue()
+        {
+            while (queuedEntries.TryDequeue(out var entry))
             {
-                if (first)
-                {
-                    ClearCurrentLine();
-                    first = false;
-                }
                 WriteEntry(entry);
             }
-
-            if (inputLine.Length > 0 && !first)
-                WriteMethod(inputLine);
-        }
-        
-        /// <summary>
-        /// Writes an entry into the log prefixed with a timestamp
-        /// </summary>
-        /// <param name="line"></param>
-        private void WriteEntry(LogEntry entry)
-        {
-            WriteTimestamp();
-            foreach (var write in entry.writes)
-                Write(write);
-            WriteMethod('\n');
-            Console.ForegroundColor = ConsoleColor.White;
-        }
-
-        private void Write(LogWrite write)
-        {
-            Console.ForegroundColor = write.color;
-            WriteMethod(write.text);
-        }
-
-        private void WriteTimestamp()
-        {
-            Console.ForegroundColor = ConsoleColor.White;
-            WriteMethod('[');
-            WriteMethod(DateTime.Now);
-            WriteMethod("] ");
         }
 
         /// <summary>
-        /// Clears the current input line of the console
+        /// Writes an entry to the log and checks for thread safety
         /// </summary>
-        private void ClearCurrentLine()
+        /// <param name="entry"></param>
+        private void WriteEntryConcurrent(Entry entry)
         {
-            WriteMethod("\r" + new string(' ', Console.WindowWidth - 2) + "\r");
+            if (Thread.CurrentThread.ManagedThreadId != loggingThread) // not on the correct thread
+            {
+                queuedEntries.Enqueue(entry);
+                return;
+            }
+
+            WriteEntry(entry);
         }
 
         /// <summary>
-        /// Logs an entry within the console
+        /// Writes an entry to the log
         /// </summary>
-        /// <param name="line"></param>
-        public void LogLine(string line)
+        /// <param name="entry"></param>
+        private void WriteEntry(Entry entry)
         {
-            LogLine(LogEntry.Init(line));
-        }
-
-        /// <summary>
-        /// Logs an entry within the console
-        /// </summary>
-        /// <param name="line"></param>
-        public void LogLine(LogEntry entry)
-        {
-            logLines.Enqueue(entry);
-        }
-
-        public void Dispose()
-        {
-            LogLine("Program Stopping...");
-            running = false;
-            delayEvent.Set();
+            Console.ForegroundColor = entry.color;
+            writeMethod($"[{DateTime.Now.ToString()}] "); // write timestamp
+            writeMethod(entry.text);
+            writeMethod("\n");
         }
     }
 }
