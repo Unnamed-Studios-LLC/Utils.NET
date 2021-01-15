@@ -148,22 +148,5 @@ namespace Utils.NET.IO
         {
             return new Vec2(ReadFloat(), ReadFloat());
         }
-
-        public void LogData()
-        {
-            var entry = LogEntry.Init("Read Buffer: ");
-            if (scratchBits >= 32)
-            {
-                if (scratchBits > 32)
-                    entry.Append(Convert.ToString((uint)(scratch >> 32), 2).PadLeft(scratchBits - 32, '0'), ConsoleColor.Red);
-                entry.Append(Convert.ToString((uint)scratch, 2).PadLeft(32, '0'), ConsoleColor.Red);
-            }
-            for (int i = ((int)bitsRead / 32); i < buffer.Length; i++)
-            {
-                entry.Append(Convert.ToString(buffer[i], 2).PadLeft(32, '0'), ConsoleColor.Red);
-                entry.Append("-", ConsoleColor.Red);
-            }
-            Log.Write(entry);
-        }
     }
 }

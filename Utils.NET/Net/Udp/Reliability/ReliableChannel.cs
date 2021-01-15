@@ -170,7 +170,6 @@ namespace Utils.NET.Net.Udp.Reliability
                 if (dif > 32) // packet lost
                 {
                     sentPackets.TryRemove(packet.Key, out dummy);
-                    Log.Write($"Packet {packet.Value.ToString()} ({packet.Key}) lost, resending", ConsoleColor.Green);
                     ResendPacket(packet.Value); // TODO implement congestion control
                 } 
                 else if (dif > 0 && ((bitfield >> (dif - 1)) & 1) == 1) // packet received successfully

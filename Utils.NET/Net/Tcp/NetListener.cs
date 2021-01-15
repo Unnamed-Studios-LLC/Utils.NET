@@ -29,7 +29,7 @@ namespace Utils.NET.Net.Tcp
 
         public virtual void Start()
         {
-            Log.Write(LogEntry.Init(this).Append(" is listening on port: " + localEndPoint.Port));
+            Log.Write($"{this} is listening on port: {localEndPoint.Port}");
             running = true;
             socket.BeginAccept(OnAcceptCallback, null);
         }

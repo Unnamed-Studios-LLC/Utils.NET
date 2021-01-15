@@ -30,7 +30,6 @@ namespace Utils.NET.Logging
 
             var timingList = timings.OrderBy(_ => _.Value);
 
-            var entry = new LogEntry();
             long first = -1;
             foreach (var timing in timingList)
             {
@@ -50,9 +49,8 @@ namespace Utils.NET.Logging
                     first = timing.Value;
                 }
                 builder.Append('\n');
-                entry.Append(builder.ToString());
+                Log.Write(builder.ToString());
             }
-            Log.Write(entry);
         }
     }
 }

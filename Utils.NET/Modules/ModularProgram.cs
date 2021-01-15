@@ -39,7 +39,7 @@ namespace Utils.NET.Modules
 
             instance.LoadExternalModules();
 
-            Log.Run();
+            //Log.Run();
 
             instance.Stop();
         }
@@ -49,7 +49,7 @@ namespace Utils.NET.Modules
         /// </summary>
         public static void Exit()
         {
-            Log.Stop();
+            //Log.Stop();
         }
 
         /// <summary>

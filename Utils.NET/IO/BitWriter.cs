@@ -186,21 +186,5 @@ namespace Utils.NET.IO
             Write(vector.x);
             Write(vector.y);
         }
-
-        public void LogData()
-        {
-            var entry = LogEntry.Init("Write Buffer: ");
-            for (int i = 0; i < (bitsWritten / 32); i++)
-            {
-                entry.Append(Convert.ToString(buffer[i], 2).PadLeft(32, '0'), ConsoleColor.Red);
-                entry.Append("-", ConsoleColor.Red);
-            }
-
-            if (scratchBits > 0)
-            {
-                entry.Append(Convert.ToString((uint)scratch, 2).PadLeft(scratchBits, '0'), ConsoleColor.Red);
-            }
-            Log.Write(entry);
-        }
     }
 }
