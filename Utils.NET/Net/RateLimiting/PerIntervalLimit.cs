@@ -11,12 +11,21 @@ namespace Utils.NET.Net.RateLimiting
     /// <summary>
     /// A rate limiting class used to limit requests to a certain amount per a given interval.
     /// </summary>
-    public class PerIntervalLimit : IDisposable
+    public class PerIntervalLimit
     {
+        /// <summary>
+        /// Request data for a specific IP address
+        /// </summary>
         private class LimitedInstance
         {
+            /// <summary>
+            /// The address of the requester
+            /// </summary>
             public IPAddress address;
 
+            /// <summary>
+            /// The amount of times a request is received
+            /// </summary>
             public int count;
 
             public LimitedInstance(IPAddress address)
@@ -26,24 +35,31 @@ namespace Utils.NET.Net.RateLimiting
             }
         }
 
+        /// <summary>
+        /// The expiration queue for requests
+        /// </summary>
         private ConcurrentExpirationQueue<LimitedInstance> expirationQueue;
 
+        /// <summary>
+        /// All requests
+        /// </summary>
         private ConcurrentDictionary<IPAddress, LimitedInstance> instances = new ConcurrentDictionary<IPAddress, LimitedInstance>();
 
+        /// <summary>
+        /// The rate limit to use
+        /// </summary>
         private readonly int rateLimit;
-
-        private Timer expirationTimer;
 
         public PerIntervalLimit(int rateLimit, double interval)
         {
             this.rateLimit = rateLimit;
             expirationQueue = new ConcurrentExpirationQueue<LimitedInstance>(interval);
-
-            int ms = (int)(interval * 1000);
-            expirationTimer = new Timer(FlushExpired, null, ms, ms);
         }
 
-        private void FlushExpired(object state)
+        /// <summary>
+        /// Flushes expired request instances
+        /// </summary>
+        private void FlushExpired()
         {
             foreach (var expired in expirationQueue.GetExpired())
             {
@@ -51,8 +67,15 @@ namespace Utils.NET.Net.RateLimiting
             }
         }
 
+        /// <summary>
+        /// Returns if an address has exceeded the set rate limit
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
         public bool CanRequest(IPAddress address)
         {
+            FlushExpired();
+
             if (!instances.TryGetValue(address, out var instance))
             {
                 instance = new LimitedInstance(address);
@@ -72,11 +95,6 @@ namespace Utils.NET.Net.RateLimiting
                 instance.count++;
                 return instance.count < rateLimit;
             }
-        }
-
-        public void Dispose()
-        {
-            expirationTimer.Dispose();
         }
     }
 }
