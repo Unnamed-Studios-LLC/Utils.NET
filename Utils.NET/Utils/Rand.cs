@@ -90,6 +90,11 @@ namespace Utils.NET.Utils
 
         #region Misc
 
+        public static ulong UInt64()
+        {
+            return BitConverter.ToUInt64(Bytes(8), 0);
+        }
+
         public static float Range(Range range)
         {
             return range.min + (range.max - range.min) * FloatValue();
@@ -106,6 +111,16 @@ namespace Utils.NET.Utils
         {
             var bytes = Bytes(byteLength);
             return Convert.ToBase64String(bytes);
+        }
+
+        private static char[] alphanumericCharacters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+
+        public static string Alphanumeric(int length)
+        {
+            var builder = new StringBuilder(length);
+            for (int i = 0; i < length; i++)
+                builder.Append(alphanumericCharacters[Next(alphanumericCharacters.Length)]);
+            return builder.ToString();
         }
 
         public static string String(int length, char[] characters)

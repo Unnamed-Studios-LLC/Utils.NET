@@ -10,6 +10,8 @@ namespace Utils.NET.Modules
 {
     public class Manifest
     {
+        public static Manifest global;
+
         public static Manifest Load(string directory = null)
         {
             foreach (var file in Directory.EnumerateFiles(directory ?? Directory.GetCurrentDirectory(), "*.mfst", SearchOption.TopDirectoryOnly))
@@ -44,6 +46,13 @@ namespace Utils.NET.Modules
         {
             this.fileName = fileName;
             json = JObject.Parse(File.ReadAllText(fileName));
+
+            local = Value("local", false);
+        }
+
+        public Manifest(JObject json)
+        {
+            this.json = json;
 
             local = Value("local", false);
         }
