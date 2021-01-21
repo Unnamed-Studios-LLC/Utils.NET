@@ -68,7 +68,36 @@ namespace Utils.NET.Net.RateLimiting
         }
 
         /// <summary>
-        /// Returns if an address has exceeded the set rate limit
+        /// Returns if an address has exceeded the set rate limit, does NOT increment the rate limit
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        public bool CanRequestNoTrigger(IPAddress address)
+        {
+            FlushExpired();
+
+            if (!instances.TryGetValue(address, out var instance))
+            {
+                instance = new LimitedInstance(address);
+                if (!instances.TryAdd(address, instance))
+                {
+                    if (!instances.TryGetValue(address, out instance))
+                        return false;
+                }
+                else
+                {
+                    expirationQueue.Enqueue(instance);
+                }
+            }
+
+            lock (instance)
+            {
+                return instance.count < rateLimit;
+            }
+        }
+
+        /// <summary>
+        /// Returns if an address has exceeded the set rate limit and increments the rate limit
         /// </summary>
         /// <param name="address"></param>
         /// <returns></returns>
@@ -94,6 +123,28 @@ namespace Utils.NET.Net.RateLimiting
             {
                 instance.count++;
                 return instance.count < rateLimit;
+            }
+        }
+
+        public void Trigger(IPAddress address)
+        {
+            if (!instances.TryGetValue(address, out var instance))
+            {
+                instance = new LimitedInstance(address);
+                if (!instances.TryAdd(address, instance))
+                {
+                    if (!instances.TryGetValue(address, out instance))
+                        return;
+                }
+                else
+                {
+                    expirationQueue.Enqueue(instance);
+                }
+            }
+
+            lock (instance)
+            {
+                instance.count++;
             }
         }
     }
