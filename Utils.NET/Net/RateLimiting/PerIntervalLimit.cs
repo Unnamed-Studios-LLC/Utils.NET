@@ -122,7 +122,7 @@ namespace Utils.NET.Net.RateLimiting
             lock (instance)
             {
                 instance.count++;
-                return instance.count < rateLimit;
+                return instance.count <= rateLimit;
             }
         }
 
