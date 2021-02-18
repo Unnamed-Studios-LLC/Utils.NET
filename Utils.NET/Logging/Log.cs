@@ -34,6 +34,11 @@ namespace Utils.NET.Logging
         private static Log instance;
 
         /// <summary>
+        /// The backup writing method
+        /// </summary>
+        public static Action<string> backupWrite = Console.WriteLine;
+
+        /// <summary>
         /// Sets the global log instance, to be called by static methods
         /// </summary>
         /// <param name="log"></param>
@@ -84,7 +89,10 @@ namespace Utils.NET.Logging
         /// <param name="entry"></param>
         private static void Write(Entry entry)
         {
-            instance?.WriteEntryConcurrent(entry);
+            if (instance != null)
+                instance.WriteEntryConcurrent(entry);
+            else
+                backupWrite?.Invoke(entry.text);
         }
 
         /// <summary>
