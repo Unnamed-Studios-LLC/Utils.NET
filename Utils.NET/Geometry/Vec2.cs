@@ -54,6 +54,11 @@ namespace Utils.NET.Geometry
             return new Vec2(x / l, y / l);
         }
 
+        public Vec2 Invert()
+        {
+            return this * -1;
+        }
+
         public Vec2 ChangeLength(float length)
         {
             var currentLength = Length;
