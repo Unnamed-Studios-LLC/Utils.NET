@@ -19,19 +19,12 @@ namespace Utils.NET.Modules
         /// The static instance of the program
         /// </summary>
         public static ModularProgram instance = new ModularProgram();
-
-        /// <summary>
-        /// The manifest of this program
-        /// </summary>
-        public static Manifest manifest;
         
         /// <summary>
         /// Runs the program with given modules
         /// </summary>
         public static void Run(params Module[] modules)
         {
-            manifest = Manifest.Load();
-
             Log.Write("Loaded manifest file");
 
             for (int i = 0; i < modules.Length; i++)

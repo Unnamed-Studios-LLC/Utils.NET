@@ -21,7 +21,6 @@ namespace Utils.NET.Utils
 
         private static void UnhandledException(object sender, UnhandledExceptionEventArgs args)
         {
-            if (ModularProgram.manifest.Value("local", false)) return;
             sendBugAction?.Invoke(args.ExceptionObject.ToString());
         }
     }
