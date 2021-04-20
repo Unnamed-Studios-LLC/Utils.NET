@@ -17,10 +17,5 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Settings\" />
-    <Folder Include="Database\" />
-    <Folder Include="Database\Queries\" />
-    <Folder Include="Database\Queries\Methods\" />
-    <Folder Include="Database\Queries\Conditions\" />
-    <Folder Include="Database\Queries\Results\" />
   </ItemGroup>
 </Project>
