@@ -84,6 +84,13 @@ namespace Utils.NET.Settings
             return builder.ToString();
         }
 
+        /// <summary>
+        /// Gets the value for a given setting property. Returns default value if no value exists
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="defaultValue"></param>
+        /// <param name="propertyName"></param>
+        /// <returns></returns>
         public T GetValue<T>(T defaultValue = default, [CallerMemberName] string propertyName = null)
         {
             if (propertyName == null)
