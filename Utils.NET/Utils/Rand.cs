@@ -8,14 +8,14 @@ namespace Utils.NET.Utils
 {
     public static class Rand
     {
-        private static ThreadLocal<Random> randoms = new ThreadLocal<Random>();
+        private static ThreadLocal<System.Random> randoms = new ThreadLocal<System.Random>();
 
-        private static Random random
+        private static System.Random random
         {
             get
             {
                 if (randoms.IsValueCreated) return randoms.Value;
-                Random rnd = new Random((int)DateTime.Now.Ticks);
+                System.Random rnd = new System.Random((int)DateTime.Now.Ticks);
                 randoms.Value = rnd;
                 return rnd;
             }

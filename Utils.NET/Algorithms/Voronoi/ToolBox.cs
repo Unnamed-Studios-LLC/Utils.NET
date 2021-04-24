@@ -11,12 +11,12 @@ namespace Utils.NET.Algorithms.Voronoi
 		/// <summary>
 		/// One static Random instance for use in the entire application
 		/// </summary>
-		public static readonly Random R = new Random((int)DateTime.Now.Ticks);
+		public static readonly System.Random R = new System.Random((int)DateTime.Now.Ticks);
 		public static double Dist(double x1, double y1, double x2, double y2)
 		{
 			return Math.Sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
 		}
-		public static IList Shuffle(IList S, Random R, bool Copy)
+		public static IList Shuffle(IList S, System.Random R, bool Copy)
 		{
 //			if(S.Rank>1)
 //				throw new Exception("Shuffle only defined on one-dimensional arrays!");
@@ -42,21 +42,21 @@ namespace Utils.NET.Algorithms.Voronoi
 			}
 			return E;
 		}
-		public static void ShuffleIList(IList A, Random R)
+		public static void ShuffleIList(IList A, System.Random R)
 		{
 			Shuffle(A,R,false);
 		}
 		public static void ShuffleIList(IList A)
 		{
-			Shuffle(A,new Random((int)DateTime.Now.Ticks),false);
+			Shuffle(A,new System.Random((int)DateTime.Now.Ticks),false);
 		}
 		public static IList Shuffle(IList A, bool Copy)
 		{
-			return Shuffle(A,new Random((int)DateTime.Now.Ticks),Copy);
+			return Shuffle(A,new System.Random((int)DateTime.Now.Ticks),Copy);
 		}
 		public static IList Shuffle(IList A)
 		{
-			return Shuffle(A,new Random((int)DateTime.Now.Ticks),true);
+			return Shuffle(A,new System.Random((int)DateTime.Now.Ticks),true);
 		}
 
 		public static int[] GetIntArrayRange(int A, int B)
@@ -164,7 +164,7 @@ namespace Utils.NET.Algorithms.Voronoi
 		public static RectangleF MaxRectangleFit(RectangleF Target, SizeF Source)
 		{
 			float W,H;
-			// 1. Auf höhe probieren
+			// 1. Auf h?he probieren
 			H = Target.Height;
 			W = Target.Height/Source.Height*Source.Width;
 			if(W<=Target.Width)
@@ -216,7 +216,7 @@ namespace Utils.NET.Algorithms.Voronoi
 		public static double DADist(double[] A, double[] B)
 		{
 			if(A.Length!=B.Length)
-				throw new Exception("Unterschiedliche Längen!");
+				throw new Exception("Unterschiedliche L?ngen!");
 			int i;
 			double E = 0;
 			for(i=0;i<A.Length;i++)

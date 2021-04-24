@@ -216,5 +216,33 @@ namespace Utils.NET.Utils
                 return false;
             }
         }
+
+        public static string ToHexString(byte[] data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException("data");
+            }
+
+            int length = data.Length;
+            char[] hex = new char[length * 2];
+            int num1 = 0;
+            for (int index = 0; index < length * 2; index += 2)
+            {
+                byte num2 = data[num1++];
+                hex[index] = GetHexValue(num2 / 0x10);
+                hex[index + 1] = GetHexValue(num2 % 0x10);
+            }
+            return new string(hex);
+        }
+
+        private static char GetHexValue(int i)
+        {
+            if (i < 10)
+            {
+                return (char)(i + 0x30);
+            }
+            return (char)((i - 10) + 0x41);
+        }
     }
 }
