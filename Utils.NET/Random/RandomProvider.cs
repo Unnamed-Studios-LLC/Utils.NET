@@ -1,23 +1,21 @@
 ﻿using System;
 using System.Text;
+using System.Threading;
 using Utils.NET.Geometry;
 
 namespace Utils.NET.Random
 {
     public class RandomProvider : IRandomProvider
     {
-        private static char[] alphanumericCharacters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+        private static readonly char[] alphanumericCharacters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
 
-        private static char[] alphaCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+        private static readonly char[] alphaCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
 
-        private static char[] numericCharacters = "0123456789".ToCharArray();
+        private static readonly char[] numericCharacters = "0123456789".ToCharArray();
 
-        private System.Random random;
+        private readonly ThreadLocal<System.Random> randoms = new ThreadLocal<System.Random>(() => new System.Random((int)DateTime.Now.Ticks));
 
-        public RandomProvider()
-        {
-            random = new System.Random((int)DateTime.Now.Ticks);
-        }
+        private System.Random random => randoms.Value;
 
         public string Alpha(int length)
         {
