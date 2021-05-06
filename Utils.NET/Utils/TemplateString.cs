@@ -12,9 +12,9 @@ namespace Utils.NET.Utils
     /// </summary>
     public class TemplateString
     {
-        private string[] bodyStrings;
+        private readonly string[] bodyStrings;
 
-        private string[] keys;
+        private readonly string[] keys;
 
         public TemplateString(string template, char keyCharacter)
         {
