@@ -50,7 +50,7 @@ namespace Utils.NET.Dependency
 
             foreach (var type in types)
             {
-                if (!type.IsClass || type.IsAbstract || type.GetConstructors().Length == 0)
+                if (!type.IsClass || type.IsAbstract || type.GetConstructors().Length == 0 || type.ContainsGenericParameters)
                 {
                     continue;
                 }
